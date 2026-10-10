@@ -1,0 +1,252 @@
+# Differentia coverage baseline -- see scripts/check_differentia_coverage.py
+#
+# Each line is a differentia conjunct that is stated in
+# differentia_expression but never reaches the generated OWL. These were
+# grandfathered when the gate was introduced; anything NOT listed here
+# fails the build. Prune a line once the conjunct is either grounded into
+# necessary_parts/qualities or removed from the differentia text.
+#
+# Format: <cluster_label>|<predicate>.<TargetClass>
+
+absorber|bearerOf.AbsorptionFunction
+air cooled heat exchanger|hasComponentPartAtAllTimes.AirFinSystem
+air cooled heat exchanger|participatesIn.AirCoolingProcess
+analogue temperature indicator|hasComponentPartAtAllTimes.AnalogueDial
+angle valve body|hasGeometry.AngularFlowPath
+angle valve|hasPart.NonInlinePortArrangement
+ball control valve|hasComponentPartAtAllTimes.BallClosure
+ball control valve|hasComponentPartAtAllTimes.RotaryActuator
+ball valve|hasComponentPartAtAllTimes.BallClosure
+ball valve|participatesIn.RotationalMotionProcess
+basin|hasGeometricProperty.OpenTop
+basin|hasInstallationProperty.PartlyBelowGrade
+bearing|participatesIn.FrictionReductionProcess
+bell nipple|hasCharacteristicShape.EnlargedDiameter
+bell nipple|hasLocation.WellheadAssembly
+block and bleed valve|hasComponentPartAtAllTimes.BleederLine
+block and bleed valve|hasComponentPartAtAllTimes.BleederValve
+block and bleed valve|hasComponentPartAtAllTimes.SingleSeat
+blower|hasOperatingParameter.MediumPressureRange
+blower|hasOperatingParameter.MediumVolumeFlowRange
+bottom hole assembly|locatedAt.BottomHoleLocation
+butterfly control valve|hasComponentPartAtAllTimes.RotatingDisc
+butterfly valve|hasComponentPartAtAllTimes.DiscTypeClosure
+butterfly valve|hasComponentPartAtAllTimes.TransverseRotationAxis
+casing|hasPart.CasingWall
+centrifugal compressor|hasComponentPartAtAllTimes.CentrifugalImpeller
+centrifugal compressor|participatesIn.RadialFlowPattern
+centrifugal pump|hasComponentPartAtAllTimes.CentrifugalImpeller
+centrifugal pump|hasComponentPartAtAllTimes.VoluteCasing
+centrifuge|hasPart.RotatingDrum
+centrifuge|participatesIn.CentrifugalForceProcess
+check valve body|designedFor.CheckValve
+check valve closure member|isComponentPartOf.CheckValve
+choke control valve|hasComponentPartAtAllTimes.ChokeGeometry
+christmas tree|hasComponentPartAtAllTimes.Wellhead
+circuit breaker|participatesIn.RegularInterruptionProcess
+coalescer|hasOutput.SkimmableLiquidPortion
+coalescer|participatesIn.GravitySeparationProcess
+compressor casing|intendedForUseWith.Compressor
+control valve|hasComponentPartAtAllTimes.Actuator
+cooling tower|hasComponentPartAtAllTimes.Tower
+cooling tower|participatesIn.ConvectiveAirCirculationProcess
+coriolis mass flow meter|hasComponentPartAtAllTimes.CoriolisFlowTube
+coriolis mass flow meter|utilizesPhysicalPrinciple.CoriolisPrinciple
+degasser|participatesIn.GasRemovalProcess
+diaphragm actuator|hasComponentPartAtAllTimes.Diaphragm
+diaphragm pump|participatesIn.DiaphragmSealing
+diaphragm valve|hasComponentPartAtAllTimes.ResilientDiaphragm
+diaphragm valve|participatesIn.DiaphragmClosureProcess
+diesel engine|hasPart.CompressionIgnitionSystem
+diesel engine|hasPart.FuelInjectionSystem
+diesel engine|hasProcessCharacteristic.CompressionIgnitionProcess
+differential pressure gauge|hasInput.PressurePortPair
+double block and bleed valve|hasComponentPartAtAllTimes.BleedPort
+double block and bleed valve|hasComponentPartAtAllTimes.PrimarySeat
+double block and bleed valve|hasComponentPartAtAllTimes.SecondarySeat
+down hole safety valve|bearerOf.SubsurfaceDeploymentRole
+down hole safety valve|participatesIn.SubsurfaceOperationProcess
+drive shaft|participatesIn.RotationalPowerTransferProcess
+eductor|hasPart.MotiveFluidNozzle
+eductor|hasPart.VenturaThroat
+eductor|participatesIn.JetEntrainmentProcess
+electric actuator|hasComponentPartAtAllTimes.ElectricToMechanicalConverter
+electric motor|hasComponentPartAtAllTimes.Rotor
+electric motor|hasComponentPartAtAllTimes.Stator
+engine|participatesIn.CombustionProcess
+expansion joint|bearerOf.FlexibilityFunction
+filter cartridge|bearerOf.CartridgeGeometryProperty
+filter cartridge|hasComponentPartAtAllTimes.ReplaceableFilterMedium
+filter element|componentPartOf.FilterAssembly
+filter element|madeFrom.FilterMedia
+filter medium|componentPartOf.Filter
+filter press|hasPart.PressureMechanism
+filter press|participatesIn.MechanicalCompressionProcess
+flange|hasCharacteristic.ProjectingFlatRimGeometry
+flexible riser|hasQuality.FlexibleProperty
+flowline|connectsDirectly.Wellhead
+fuse|hasComponentPartAtAllTimes.FuseElement
+gas cyclone separator|hasPart.CyclonicFlowChamber
+gas cyclone separator|participatesIn.CentrifugalSeparationProcess
+gas engine|hasComponentPartAtAllTimes.ReciprocatingPistonMechanism
+gas engine|hasComponentPartAtAllTimes.SparkIgnitionSystem
+gas turbine|hasComponentPartAtAllTimes.CombustionChamber
+gas turbine|hasComponentPartAtAllTimes.Compressor
+gas turbine|participatesIn.AirCompressionProcess
+gas turbine|participatesIn.FuelCombustionProcess
+gasket|hasComponentPartAtAllTimes.DeformableMaterial
+gasket|hasProperty.ClosedLoopGeometry
+gasket|participatesIn.SurfaceSealingProcess
+gate control valve|hasComponentPartAtAllTimes.GateClosureMechanism
+gate valve|hasComponentPartAtAllTimes.GateClosure
+gate valve|hasComponentPartAtAllTimes.LinearActuationMechanism
+gear casing|hasContent.GearMechanism
+gear pump|hasComponentPartAtAllTimes.GearMechanism
+gear wheel|hasComponentPartAtAllTimes.Tooth
+gear wheel|hasComponentPartAtAllTimes.WheelBody
+globe control valve|hasComponentPartAtAllTimes.GlobeValveBody
+globe control valve|hasComponentPartAtAllTimes.LinearMotionClosure
+globe valve body|hasDesignCharacteristic.GlobularGeometry
+globe valve|hasComponentPartAtAllTimes.LinearMotionClosure
+globe valve|hasComponentPartAtAllTimes.NormalSeat
+header|connects_to.SmallPipe
+header|participatesIn.MultiStreamDistributionProcess
+heat transfer plate|participatesIn.MediaSeparationProcess
+hopper|hasComponentPartAtAllTimes.SolidDischargeOpening
+hose|capableOf.PressurizedFluidConduction
+hose|hasQuality.Flexibility
+housing|bearerOf.SupportFunction
+hydraulic actuator|participatesIn.HydraulicToMechanicalEnergyConversionProcess
+hydraulic motor|participatesIn.HydraulicToMechanicalEnergyConversionProcess
+hydrocyclone|hasComponentPartAtAllTimes.ConicalSection
+hydrocyclone|participatesIn.CentrifugalSeparationProcess
+impeller|hasComponentPartAtAllTimes.Hub
+impeller|participatesIn.RotationalMotion
+in-line filter|hasInstallationMethod.InLineInstallation
+in-line filter|supportedBy.ConnectedEquipment
+input shaft|connectedTo.ExternalEnergySource
+input shaft|participatesIn.MechanicalEnergyReceptionProcess
+kettle reboiler|hasQuality.HorizontalOrientation
+level indicator|hasFunction.LevelMeasurementFunction
+level transmitter|bearerOf.LevelMeasurementFunction
+limit switch|hasInput.MechanicalMotion
+manifold|hasComponentPartAtAllTimes.MultipleFluidOpenings
+manual valve|hasPart.ManualActuator
+master valve|componentPartOf.ChristmasTree
+needle valve|hasComponentPartAtAllTimes.NeedlePlug
+needle valve|hasComponentPartAtAllTimes.SmallOrificeSeat
+nozzle|hasPart.ProtrudingPart
+nozzle|hasPart.ShapedOrifice
+orifice plate|hasPart.SpecifiedHole
+output shaft|participatesIn.MechanicalEnergyOutputProcess
+pig launcher|hasComponentPartAtAllTimes.PipelineConnection
+pipe bend|hasQuality.CurvedGeometry
+pipe bend|hasQuality.NonStandardBendRadius
+pipe elbow|hasGeometricProperty.CurvedGeometry
+pipe elbow|hasProperty.DirectionalChangeCapacity
+pipe reducer|hasPart.InletEnd
+pipe reducer|hasPart.OutletEnd
+pipe reducer|hasProperty.DifferentNominalPipeSizes
+pipe tee|hasPartAtAllTimes.RunPort
+pipe|hasPhysicalProperty.LongitudinalExtent
+pipe|hasPhysicalProperty.TubularGeometry
+piston check valve|hasComponentPartAtAllTimes.PistonClosure
+piston|componentPartOf.Cylinder
+plug valve|hasComponentPartAtAllTimes.PlugClosure
+plug valve|participatesIn.QuarterTurnRotationProcess
+pneumatic actuator|hasOperatingMedium.PneumaticPower
+position transmitter|bearerOf.PositionMeasurementCapability
+positive displacement pump|hasComponentPartAtAllTimes.DisplacementMechanism
+positive displacement pump|participatesIn.PositiveDisplacementProcess
+power transformer primary winding|bearerOf.PrimaryWindingFunction
+power transformer primary winding|partOf.PowerTransformer
+power transformer secondary winding|bearerOf.SecondaryWindingFunction
+power transformer secondary winding|partOf.PowerTransformer
+power transformer|bearerOf.ElectricalPowerTransmissionRole
+power transformer|hasInput.AlternatingCurrentPortion
+power transformer|hasOutput.AlternatingCurrentPortion
+pump casing|hasComponentPartAtAllTimes.DischargeNozzle
+pump casing|surrounds.Impeller
+pump shaft|hasComponentPartAtAllTimes.Bearing
+pump shaft|hasComponentPartAtAllTimes.Impeller
+pump shaft|partOf.Pump
+reciprocating pump|hasComponentPartAtAllTimes.CylindricalChamber
+reciprocating pump|hasComponentPartAtAllTimes.PistonOrPlunger
+reciprocating pump|hasComponentPartAtAllTimes.ReciprocatingDisplacementMechanism
+riser|hasQuality.VerticalOrientation
+riser|participatesIn.UpwardFlowProcess
+rotary actuator|participatesIn.RotaryMotionProcess
+rotary pump|hasComponentPartAtAllTimes.RotaryDisplacementMechanism
+rotary pump|lacksComponentPart.SeparateInletValve
+rotary pump|lacksComponentPart.SeparateOutletValve
+rotor|hasComponentPartAtAllTimes.RotorShaft
+rotor|participatesIn.RotationalMotionProcess
+rupture disc|hasQuality.CalibrationPressure
+rupture disc|participatesIn.IrreversibleRuptureProcess
+safety valve|bearerOf.SafetyReliefFunction
+scrubber|participatesIn.LiquidWashingProcess
+seat|hasComponentPartAtAllTimes.SealingSurface
+seat|participatesIn.ValveClosingProcess
+self-operating valve|bearerOf.EnergyIndependentOperationCapability
+self-operating valve|hasComponentPartAtAllTimes.SelfOperatingMechanism
+shaft|hasPart.ShaftKey
+shaft|participatesIn.RotationalMotion
+sheave|hasComponentPartAtAllTimes.GroovedRim
+shell and tube heat exchanger|hasComponentPartAtAllTimes.Shell
+shell and tube heat exchanger|spatiallyContainedIn.Shell
+silo|hasComponentPartAtAllTimes.ConicalBottom
+skid|hasComponentPartAtAllTimes.SupportFrame
+skid|participatesIn.HandlingProcess
+solenoid actuator|hasComponentPartAtAllTimes.Plunger
+solenoid actuator|hasComponentPartAtAllTimes.Solenoid
+solenoid valve|bearerOf.ElectricalControlFunction
+stator winding|componentPartOf.Stator
+stator|partOf.RotatingMachine
+storage tank|bearerOf.ExtendedStorageFunction
+strainer|hasComponentPartAtAllTimes.FilteringElement
+strainer|participatesIn.SolidLiquidSeparationProcess
+swing check valve|hasComponentPartAtAllTimes.HingedDisc
+swing check valve|hasComponentPartAtAllTimes.SwingArm
+switch contact|partOf.ElectricalContact
+temperature indicator|hasInput.Temperature
+temperature transmitter|bearerOf.TemperatureMeasurementCapability
+thermowell stem|hasLocation.ProcessMediumIntrusionZone
+thermowell stem|hasQuality.HollowCylindricalShape
+thermowell stem|partOf.Thermowell
+thermowell|hasPart.PressureTightReceptacle
+thermowell|hasPart.ProcessConnection
+thin plate|hasQuality.ColdFormedManufacturing
+thin plate|hasQuality.ThinThickness
+transformer|hasComponentPartAtAllTimes.MagneticCore
+transformer|hasComponentPartAtAllTimes.TransformerWinding
+transmitter housing|hasComponentPartAtAllTimes.TransmitterElectronicCircuit
+transmitter|hasInput.ProcessVariableSignal
+tubing bowl|componentPartOf.TubingHead
+tubing hanger|participatesIn.WellCompletionProcess
+tubing head|hasPart.ChristmasTreeConnectionInterface
+turbine|hasComponentPartAtAllTimes.FluidInteractionBlades
+turbine|hasComponentPartAtAllTimes.RotatingShaft
+umbilical|hasQuality.EasyDisconnectability
+umbilical|hasQuality.Flexibility
+vacuum column|bearerOf.VacuumPressureResistanceQuality
+valve body|hasComponentPartAtAllTimes.WorkingComponentHousingStructure
+valve body|hasFunction.PressureContainmentFunction
+valve closure member|hasQuality.PositionableInFlowStream
+valve closure member|isComponentPartOf.Valve
+valve seat|adjacentTo.ValveClosureMember
+valve seat|bearerOf.SealingSurfaceQuality
+valve seat|partOf.Valve
+valve stem|hasComponentPartAtAllTimes.ValveStemSeal
+valve stem|participatesIn.ValveOperationProcess
+vessel head|partOf.Vessel
+vessel head|realizes.VesselClosureRole
+vessel shell|hasFunction.PressureContainmentFunction
+vessel shell|partOf.Vessel
+vibration transmitter|bearerOf.VibrationMeasurementFunction
+wafer check valve|hasComponentPartAtAllTimes.WaferPatternValveBody
+wellbore|bearerOf.SubsurfaceAccessFunction
+wellbore|spatiallyContainedIn.Well
+wellhead|hasComponentPartAtAllTimes.CasingHanger
+wellhead|hasConnectionTo.Wellbore
+wing valve|componentPartOf.ChristmasTree
+wireline|participatesIn.WellboreDeploymentProcess

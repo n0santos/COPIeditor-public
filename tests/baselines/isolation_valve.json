@@ -1,0 +1,82 @@
+{
+  "cluster_label": "isolation valve",
+  "classification_basis": "functional",
+  "classification_basis_rationale": "The concept is defined by its function of 'isolating all or part of a pipeline system' rather than by any specific physical mechanism or construction. Any valve type (ball, gate, butterfly, etc.) can serve as an isolation valve if it performs the isolation function.",
+  "step1_function": {
+    "function_name": "IsolationFunction",
+    "function_parent": "FlowControlFunction",
+    "function_parent_enriched": true,
+    "function_nl_definition": "A FlowControlFunction that is realized in an IsolationProcess and that consists in completely stopping fluid flow to isolate all or part of a pipeline system from the rest of the system, typically for maintenance, safety, or operational purposes.",
+    "process_name": "IsolationProcess",
+    "process_parent": "PlannedProcess",
+    "process_nl_definition": "A PlannedProcess in which fluid flow is completely stopped by an isolation valve to separate all or part of a pipeline system from the rest of the system, enabling safe maintenance, emergency response, or operational reconfiguration.",
+    "rationale": "The identity-giving function is isolation - the capacity to completely cut off flow to separate pipeline sections. This is more specific than general flow control as it specifically involves complete shutoff for system isolation purposes. The existing IsolationFunction in the ontology is co-extensional with this concept."
+  },
+  "step2_genus": {
+    "genus_name": "Valve",
+    "genus_bfo_root": "Assembly",
+    "genus_enriched": true,
+    "rationale": "The source explicitly states 'An ISOLATION VALVE is an ARTEFACT and a VALVE'. Valve is the most specific appropriate superclass and is already enriched in the ontology. All isolation valves are valves with the additional specific function of isolation."
+  },
+  "step3_differentia": {
+    "differentia_expression": "∃bearerOf.IsolationFunction",
+    "differentia_nl": "Bears an isolation function for completely stopping flow to isolate pipeline sections.",
+    "genus_already_provides": [
+      "∃bearerOf.FlowControlFunction",
+      "∃hasPart.ValveBody",
+      "∃hasPart.FlowControlElement"
+    ],
+    "distinguishes_from": {
+      "ControlValve": "Control valves modulate flow for process control, while isolation valves provide complete shutoff for system isolation",
+      "CheckValve": "Check valves prevent backflow automatically, while isolation valves provide manual/actuated complete isolation",
+      "ReliefValve": "Relief valves protect against overpressure, while isolation valves isolate system sections",
+      "SafetyValve": "Safety valves provide emergency pressure relief, while isolation valves provide operational isolation"
+    },
+    "rationale": "The differentia is the specific isolation function - the capacity to completely isolate pipeline sections. This is more specific than the general flow control function inherited from Valve genus, focusing on complete shutoff for isolation rather than flow modulation."
+  },
+  "step4_parts": {
+    "parts": [],
+    "rationale": "No component terms are provided in the source standards for isolation valves. The necessary parts (valve body, closure element, etc.) are inherited from the Valve genus. Specific isolation valve implementations would have their own constructive parts (actuators, position indicators, etc.) but these vary by subtype and are not universal to all isolation valves."
+  },
+  "step5_signature": {
+    "inputs": [
+      {
+        "type": "FluidPortion",
+        "count": 1,
+        "constraints": "any phase - liquid, gas, or multiphase stream in pipeline system"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "FluidPortion",
+        "count": 1,
+        "constraints": "same fluid as input when valve is open; no output when valve is closed for isolation"
+      }
+    ],
+    "transformation": "complete flow stoppage to isolate pipeline sections from the rest of the system",
+    "transformation_kind": "flow_isolation",
+    "transformation_kind_status": "controlled",
+    "proposed_kind_rationale": null,
+    "new_participant_type_definitions": [],
+    "rationale": "Isolation valves have a binary signature - they either allow full flow (open) or completely stop flow (closed) to isolate system sections. This differs from control valves which modulate flow, and from check valves which prevent backflow. The complete shutoff capability for isolation purposes is the distinguishing process characteristic."
+  },
+  "axiom_mode": "equivalent",
+  "primitive_rationale": null,
+  "disjoint_with": [],
+  "disjointness_rationale": "Isolation valves are not disjoint with other valve types as they represent a functional classification that can be combined with constructive types (e.g., a ball valve can also be an isolation valve). The signatures are compatible - isolation is about complete shutoff capability, not incompatible process mechanisms.",
+  "definitions": {
+    "nl_definition_en": "An isolation valve is a valve that bears an isolation function for completely stopping fluid flow to isolate all or part of a pipeline system from the rest of the system.",
+    "nl_definition_pt": "Uma válvula de isolamento é uma válvula que possui uma função de isolamento para interromper completamente o fluxo de fluido e isolar toda ou parte de um sistema de tubulação do resto do sistema.",
+    "semiformal_axiom": "Every isolation valve is a valve that bears an isolation function, and every valve that bears an isolation function is an isolation valve.",
+    "fol_axiom": "∀x(IsolationValve(x) ↔ (Valve(x) ∧ ∃f(IsolationFunction(f) ∧ bearerOf(x,f))))"
+  },
+  "cross_standard_notes": "Only one source (ISO 15926) provides a definition. The definition is concise and functional, focusing on the isolation purpose rather than construction details. The subsea isolation valve subtype mentioned suggests emergency isolation applications.",
+  "confidence": {
+    "step1": "high",
+    "step2": "high",
+    "step3": "high",
+    "step4": "medium",
+    "step5": "high",
+    "overall": "high"
+  }
+}

@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+{% block title %}Divergence Matrix — COPI Editor{% endblock %}
+{% block head %}
+<style>
+  :root {
+    --t1: #2563eb; --t1-bg: #dbeafe;
+    --t2: #7c3aed; --t2-bg: #ede9fe;
+    --t3: #d97706; --t3-bg: #fef3c7;
+    --t4: #dc2626; --t4-bg: #fee2e2;
+    --t5: #b45309; --t5-bg: #fef9c3;
+  }
+
+  .type-badge {
+    display: inline-block;
+    font-family: system-ui, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .badge-T1 { background: var(--t1-bg); color: var(--t1); }
+  .badge-T2 { background: var(--t2-bg); color: var(--t2); }
+  .badge-T3 { background: var(--t3-bg); color: var(--t3); }
+  .badge-T4 { background: var(--t4-bg); color: var(--t4); }
+  .badge-T5 { background: var(--t5-bg); color: var(--t5); }
+
+  .matrix-table th {
+    font-family: system-ui, sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+    padding: 0.6rem 1rem;
+    border-bottom: 2px solid #dee2e6;
+    background: #f8fafc;
+  }
+  .matrix-table .col-type {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    vertical-align: middle;
+  }
+  .matrix-table td {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .matrix-table tr:hover td { background: #f8fafc; }
+  .matrix-table td.label-cell {
+    text-align: left;
+    font-family: system-ui, sans-serif;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: #1e293b;
+  }
+  .dot-filled {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform .1s;
+  }
+  .dot-filled:hover { transform: scale(1.25); }
+  .dot-empty {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 1.5px solid #cbd5e1;
+  }
+  .dot-T1 { background: var(--t1); }
+  .dot-T2 { background: var(--t2); }
+  .dot-T3 { background: var(--t3); }
+  .dot-T4 { background: var(--t4); }
+  .dot-T5 { background: var(--t5); }
+
+  .stat-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    background: white;
+  }
+  .stat-val { font-size: 2rem; font-weight: 800; line-height: 1; font-family: system-ui; }
+  .stat-lbl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .07em; color: #6c757d; margin-top: 0.2rem; }
+  .stat-sub { font-size: 0.72rem; color: #94a3b8; margin-top: 0.1rem; font-family: system-ui; }
+
+  /* Detail popover */
+  .div-popover {
+    display: none;
+    position: absolute;
+    z-index: 1000;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    padding: 0.9rem 1rem;
+    max-width: 360px;
+    font-size: 0.82rem;
+    font-family: system-ui, sans-serif;
+  }
+  .div-popover.show { display: block; }
+  .div-popover .pop-type { font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 0.3rem; }
+  .div-popover .pop-desc { color: #374151; margin-bottom: 0.5rem; line-height: 1.5; }
+  .div-popover .pop-evidence { font-size: 0.75rem; color: #94a3b8; font-style: italic; border-top: 1px solid #f1f5f9; padding-top: 0.4rem; }
+  .div-popover .pop-resolution { margin-top: 0.5rem; }
+  .div-popover .pop-resolution input { font-size: 0.8rem; }
+
+  .legend-item { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.6rem; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-0" style="font-family:system-ui,sans-serif;font-weight:700;">Cross-Standard Divergence Matrix</h4>
+    <div class="text-muted" style="font-size:0.83rem; font-family:system-ui;">
+      Divergences revealed by the five-step BFO/IOF-Core axiomatization method
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="/enrich/divergences/export-latex" class="btn btn-sm btn-outline-secondary" style="font-size:0.8rem;">
+      &#x2B07; Export LaTeX
+    </a>
+    <a href="/enrich/" class="btn btn-sm btn-outline-secondary" style="font-size:0.8rem;">
+      &larr; Workbench
+    </a>
+  </div>
+</div>
+
+<!-- Stats row -->
+<div class="row g-3 mb-4">
+  {% for t in types %}
+  {% set s = stats[t] %}
+  <div class="col">
+    <div class="stat-card">
+      <div class="stat-val" style="color: var(--{{ t }});">{{ s.count }}</div>
+      <div class="stat-lbl">
+        <span class="type-badge badge-{{ t }}">{{ t }}</span>
+      </div>
+      <div class="stat-sub">{{ s.pct }}% of {{ clusters|length }} types</div>
+      <div style="font-size:0.68rem; color:#94a3b8; margin-top:0.25rem; font-family:system-ui;">{{ labels[t] }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Main matrix -->
+<div class="card border-0 shadow-sm" style="border-radius:8px; overflow:hidden;">
+  <div class="card-body p-0">
+    {% if not clusters %}
+    <div class="text-center py-5 text-muted">
+      <div style="font-size:2.5rem; opacity:.2;">&#x1F4CA;</div>
+      <div class="mt-2">No enrichments with divergences yet.</div>
+      <div style="font-size:0.85rem; margin-top:.5rem;">
+        Open an enrichment and click <strong>Detect Divergences</strong> to populate this matrix.
+      </div>
+    </div>
+    {% else %}
+    <table class="table table-hover matrix-table mb-0">
+      <thead>
+        <tr>
+          <th style="text-align:left; min-width:160px;">Equipment Type</th>
+          <th class="col-type" style="min-width:90px; position:relative;">
+            <span class="type-badge badge-T1">T1</span><br>
+            <span style="font-size:0.65rem; font-weight:400; color:#6c757d;">Categorical</span>
+          </th>
+          <th class="col-type">
+            <span class="type-badge badge-T2">T2</span><br>
+            <span style="font-size:0.65rem; font-weight:400; color:#6c757d;">Granularity</span>
+          </th>
+          <th class="col-type">
+            <span class="type-badge badge-T3">T3</span><br>
+            <span style="font-size:0.65rem; font-weight:400; color:#6c757d;">Identity</span>
+          </th>
+          <th class="col-type">
+            <span class="type-badge badge-T4">T4</span><br>
+            <span style="font-size:0.65rem; font-weight:400; color:#6c757d;">Topo vs Mero</span>
+          </th>
+          <th class="col-type">
+            <span class="type-badge badge-T5">T5</span><br>
+            <span style="font-size:0.65rem; font-weight:400; color:#6c757d;">Implicit Fn</span>
+          </th>
+          <th style="text-align:left; font-size:0.72rem; color:#6c757d;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cl in clusters %}
+        {% set row_data = matrix[cl] %}
+        {% set enr = enr_map.get(cl) %}
+        <tr>
+          <td class="label-cell">
+            {% if enr %}
+            <a href="/enrich/{{ enr.id }}" style="color:#1e3a5f; text-decoration:none;">
+              {{ cl | title }}
+            </a>
+            {% else %}
+            {{ cl | title }}
+            {% endif %}
+            {% if enr and enr.copi_id %}
+            <code style="font-size:0.65rem; color:#94a3b8; margin-left:.3rem;">COPI_{{ '%07d' % enr.copi_id }}</code>
+            {% endif %}
+          </td>
+          {% for t in types %}
+          {% set divs = row_data[t] %}
+          <td style="position:relative;">
+            {% if divs %}
+              {% set d = divs[0] %}
+              <span class="dot-filled dot-{{ t }}"
+                    title="{{ d.description[:80] }}"
+                    onclick="showPopover(event, {{ d.id }}, '{{ t }}', {{ d | tojson }})">
+              </span>
+              {% if divs|length > 1 %}
+              <sup style="font-size:0.6rem; color:#94a3b8;">+{{ divs|length - 1 }}</sup>
+              {% endif %}
+            {% else %}
+              <span class="dot-empty"></span>
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td style="text-align:left;">
+            {% if enr %}
+            <a href="/enrich/{{ enr.id }}" class="btn btn-xs btn-outline-secondary"
+               style="font-size:0.68rem; padding:.1rem .4rem;">Edit &rarr;</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="mt-4 row g-3">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm" style="border-radius:8px;">
+      <div class="card-body" style="font-family:system-ui,sans-serif; font-size:0.82rem;">
+        <div class="fw-semibold mb-2" style="font-size:0.72rem; text-transform:uppercase; letter-spacing:.06em; color:#6c757d;">Divergence Types</div>
+        {% for t in types %}
+        <div class="legend-item">
+          <div class="legend-dot" style="background:var(--{{ t }});"></div>
+          <div>
+            <strong><span class="type-badge badge-{{ t }}">{{ t }}</span> {{ labels[t] }}</strong>
+            <div style="font-size:0.75rem; color:#6c757d; margin-top:.1rem;">
+              {% if t == 'T1' %}Different standards place the equipment under incompatible parent categories
+              {% elif t == 'T2' %}One standard treats it as atomic; another decomposes into sub-classes
+              {% elif t == 'T3' %}Standards use different identity criteria: function-based vs topology-based vs property-based
+              {% elif t == 'T4' %}One standard models material parts (mereological); another models topological segments
+              {% elif t == 'T5' %}No standard formally axiomatizes the identity-giving function (universal)
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm" style="border-radius:8px;">
+      <div class="card-body" style="font-family:system-ui,sans-serif; font-size:0.82rem;">
+        <div class="fw-semibold mb-2" style="font-size:0.72rem; text-transform:uppercase; letter-spacing:.06em; color:#6c757d;">Step &rarr; Divergence Mapping</div>
+        <table class="table table-sm mb-0" style="font-size:0.8rem;">
+          <thead><tr><th style="font-size:.7rem;">Step</th><th style="font-size:.7rem;">Reveals</th></tr></thead>
+          <tbody>
+            <tr><td>1 &mdash; Identity-giving function</td><td><span class="type-badge badge-T5">T5</span> <span class="type-badge badge-T3">T3</span></td></tr>
+            <tr><td>2 &mdash; Genus</td><td><span class="type-badge badge-T1">T1</span></td></tr>
+            <tr><td>3 &mdash; Differentia</td><td><span class="type-badge badge-T3">T3</span></td></tr>
+            <tr><td>4 &mdash; Necessary parts</td><td><span class="type-badge badge-T2">T2</span> <span class="type-badge badge-T4">T4</span></td></tr>
+            <tr><td>5 &mdash; Process signature</td><td><span class="type-badge badge-T5">T5</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Popover for divergence details -->
+<div id="divPopover" class="div-popover shadow">
+  <div id="pop-close" style="float:right; cursor:pointer; color:#94a3b8; font-size:0.9rem;" onclick="closePopover()">&#x2715;</div>
+  <div class="pop-type" id="pop-type"></div>
+  <div class="pop-desc" id="pop-desc"></div>
+  <div class="pop-evidence" id="pop-evidence"></div>
+  <div class="pop-resolution mt-2">
+    <div style="font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; margin-bottom:.2rem;">Resolution (ontologist notes)</div>
+    <div class="d-flex gap-1">
+      <input type="text" id="pop-resolution-input" class="form-control form-control-sm"
+             placeholder="How was this resolved in the ontology?">
+      <button class="btn btn-sm btn-outline-primary" onclick="saveResolution()" style="font-size:.75rem; white-space:nowrap;">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentDivId = null;
+
+function showPopover(event, divId, type, data) {
+  event.stopPropagation();
+  currentDivId = divId;
+  const pop = document.getElementById('divPopover');
+  document.getElementById('pop-type').innerHTML =
+    `<span class="type-badge badge-${type}">${type}</span> ${data.divergence_label || ''} &middot; Step ${data.detected_at_step || '?'} &middot; <span style="font-size:.68rem;color:#94a3b8;">${data.detected_by || 'auto'}</span>`;
+  document.getElementById('pop-desc').textContent = data.description || '';
+  const ev = data.evidence || '';
+  document.getElementById('pop-evidence').textContent = ev ? `Evidence: ${ev.substring(0, 200)}…` : '';
+  document.getElementById('pop-resolution-input').value = data.resolution || '';
+
+  const rect = event.target.getBoundingClientRect();
+  pop.style.top  = (window.scrollY + rect.bottom + 8) + 'px';
+  pop.style.left = Math.min(rect.left, window.innerWidth - 380) + 'px';
+  pop.classList.add('show');
+}
+
+function closePopover() {
+  document.getElementById('divPopover').classList.remove('show');
+  currentDivId = null;
+}
+
+async function saveResolution() {
+  if (!currentDivId) return;
+  const resolution = document.getElementById('pop-resolution-input').value.trim();
+  const resp = await fetch(`/enrich/api/divergences/${currentDivId}/resolution`, {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({resolution}),
+  });
+  if (resp.ok) {
+    closePopover();
+  }
+}
+
+document.addEventListener('click', function(e) {
+  const pop = document.getElementById('divPopover');
+  if (pop.classList.contains('show') && !pop.contains(e.target)) {
+    closePopover();
+  }
+});
+</script>
+{% endblock %}

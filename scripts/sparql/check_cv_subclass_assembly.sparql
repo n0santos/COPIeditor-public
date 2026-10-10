@@ -1,0 +1,19 @@
+# Entailment check: ControlValve ⊑ iof:Assembly (must hold)
+# Returns a row (violation) if the entailment is ABSENT from the reasoned graph.
+#
+# NOTE: This check currently FAILS because enrichment_service.py serializes
+# genus_bfo_root='Assembly' only as display metadata — it does NOT emit
+# "copi:ControlValve rdfs:subClassOf iof-core:Assembly" in the OWL output.
+# Fix required: update generate_turtle() to emit an explicit rdfs:subClassOf
+# for genus_bfo_root when genus_bfo_root differs from the direct genus root.
+# See ODR-013 Consequences ("OWL export regenerado").
+PREFIX copi:     <https://www.inf.ufrgs.br/ontologies/copi/>
+PREFIX iof-core: <https://spec.industrialontologies.org/ontology/construct/>
+PREFIX rdfs:     <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?violation WHERE {
+  FILTER NOT EXISTS {
+    copi:COPI_0000087 rdfs:subClassOf+ iof-core:Assembly .
+  }
+  BIND("ControlValve (COPI_0000087) is not a subClassOf iof-core:Assembly — ODR-013 requires explicit axiom; serializer fix pending" AS ?violation)
+}

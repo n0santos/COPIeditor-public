@@ -1,0 +1,66 @@
+# ODR-020 — Gate A fix (DRAFT DIFF — do NOT auto-apply; review string-continuation on apply)
+#
+# Purpose: bring the Step 5 participant-type prompt into line with ODR-010 §1/§5 so future
+# enrichments cannot emit Process/Quality/energy-portion participants. Removes the abandoned
+# 7 "established types" (ElectricalPower, MechanicalPower, ThermalEnergy, InformationBearingArtifact)
+# and constrains type_bfo_parent to the two admissible anchors.
+#
+# NOTE: prompts.py builds this block as a backslash-continued string. The hunk below preserves
+# that style; verify the trailing " \" continuations after applying.
+
+--- a/enrichment/prompts.py
++++ b/enrichment/prompts.py
+@@ -332,16 +332,31 @@
+ **Participant type guidance:**
+-Participant types must be grounded in BFO/IOF-Core. The following are established COPI \
+-types — prefer them when they fit:
+-- `FluidPortion` — any portion of fluid (liquid, gas, or multiphase stream)
+-- `GasPortion` — gas or vapour specifically; `LiquidPortion` — liquid specifically
+-- `SolidPortion` — solid material, powder, or particles
+-- `ElectricalPower` — electrical energy input
+-- `MechanicalPower` — rotational or linear mechanical energy (shaft power)
+-- `ThermalEnergy` — heat as a distinct stream (not the heated fluid itself)
+-- `InformationBearingArtifact` — any signal, measurement output, or control signal
+-
+-If none of the established types fits a participant, you MAY introduce a new type — but \
+-you MUST supply its `type_bfo_parent` (the BFO or IOF-Core class it is a subtype of) and \
+-`type_nl_definition` (a standalone definition suitable for an OWL annotation) in the \
+-`new_participant_type_definitions` list at the signature level. Never use an ad-hoc name \
+-without defining it.
++Participant types (hasInput / hasSpecifiedOutput fillers) are admissible in EXACTLY two \
++BFO/IOF-Core categories (ODR-010 §1). Use ONLY these; anything else FAILS the export gate.\
++
++MATERIAL SUBSTANCE (⊑ bfo:MaterialEntity) — things that physically flow in/out:
++- `FluidPortion` — any portion of fluid (liquid, gas, or multiphase stream)
++- `GasPortion` — gas/vapour; `LiquidPortion` — liquid; `SolidPortion` — solid/powder/particles
++
++INFORMATION CONTENT ENTITY (⊑ iof-core:InformationContentEntity) — information produced/consumed:
++- `ControlSignal` / `<X>Signal` — non-measurement signals
++- a measurement OUTPUT is a `<Quantity>MeasurementResult` ⊑ iof-core:MeasurementInformationContentEntity
++
++NEVER use as a participant (ODR-010 §5 — rejected):
++- Energy/power/work — `ElectricalPower`, `MechanicalPower`, `ThermalEnergy`, `*EnergyPortion`: \
++energy is not a participant. Discrimination is carried by the process kind (transformation_kind); \
++an equipment's power demand is a Quality on the EQUIPMENT (`bearer_of some <Quality>`), never a process I/O.
++- Motion/flow/occurrents — `RotationalMotion`, `MechanicalMotion`, `KineticMotion`, \
++`ElectricalCurrentFlow`, `<X>Radiation`: these are processes (Occurrent) and violate the \
++Continuant range of hasInput/hasSpecifiedOutput. The motion IS the host process.
++- Qualities — `Temperature`, `Pressure`, `Force`, `Displacement`, `Load`: a measured quality is \
++`described` by a MeasurementResult ICE, not a participant.
++- Equipment parts — `<X>Element`, `<X>SensingElement`: attach via hasComponentPartAtAllTimes \
++on the equipment, not as a process participant.
++
++If a genuinely new MATERIAL or INFORMATION type is needed, supply `type_nl_definition` and a \
++`type_bfo_parent` restricted to ONE of {`bfo:MaterialEntity`, `iof-core:InformationContentEntity`, \
++`iof-core:MeasurementInformationContentEntity`} in `new_participant_type_definitions`. \
++Any Process/Quality/energy-portion filler is invalid and will be rejected at export.
+
+# --- Companion change (schema hint, ~line 518/527) -------------------------------------------
+# In the step5_signature JSON schema, tighten the `type` hint and the
+# `new_participant_type_definitions[].type_bfo_parent` field to the enum above, e.g.:
+#   "type": "<MaterialEntity-portion OR InformationContentEntity subtype — see guidance>"
+#   "type_bfo_parent": "<bfo:MaterialEntity | iof-core:InformationContentEntity | iof-core:MeasurementInformationContentEntity>"
+# (left as a prose note; the exact JSON-schema lines are 508-530 in prompts.py.)
+#
+# Gates C (participant_anchoring.py rewrite) and D (verify_service admissibility enforcement)
+# remain deferred per ODR-020 Consequences.

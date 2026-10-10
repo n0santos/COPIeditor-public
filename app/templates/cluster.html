@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} — Aggregate{% endblock %}
+
+{% block head %}
+<style>
+  .cluster-name {
+    font-family: var(--font-serif);
+    font-size: 2rem;
+    font-weight: 400;
+    color: #1e293b;
+    line-height: 1.2;
+  }
+  .source-card {
+    background: white;
+    border: 1px solid var(--copi-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .source-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 1.1rem;
+    border-bottom: 1px solid var(--copi-border);
+    background: #f8fafc;
+  }
+  .source-card__body { padding: 1.1rem; }
+  .source-id {
+    font-family: monospace;
+    font-size: 0.78rem;
+    color: var(--copi-muted);
+    margin-bottom: 0.75rem;
+  }
+  .source-def {
+    font-size: 0.93rem;
+    color: #374151;
+    line-height: 1.7;
+    border-left: 3px solid var(--copi-border);
+    padding-left: 1rem;
+    margin: 0 0 1rem;
+    font-style: italic;
+  }
+  .source-no-def {
+    font-size: 0.88rem;
+    color: var(--copi-muted);
+    font-style: italic;
+    margin-bottom: 1rem;
+  }
+  .meta-label {
+    font-size: 0.69rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--copi-muted);
+    margin-bottom: 0.4rem;
+  }
+  .meta-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .meta-list li { font-size: 0.83rem; color: #374151; padding: 0.1rem 0; }
+  .meta-list li a { color: var(--copi-blue); text-decoration: none; }
+  .meta-list li a:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb" style="font-size:0.83rem;">
+    <li class="breadcrumb-item"><a href="/">Home</a></li>
+    <li class="breadcrumb-item"><a href="/search?q={{ name | urlencode }}">Search</a></li>
+    <li class="breadcrumb-item active">{{ name }}</li>
+  </ol>
+</nav>
+
+<div class="mb-4">
+  <div class="cluster-name">{{ name }}</div>
+  <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+    {% for entry in entries %}
+    <span class="badge bg-{{ entry.source_color }}">{{ entry.source_label }}</span>
+    {% endfor %}
+    <span style="font-size:0.78rem; color:var(--copi-muted);">
+      {{ entries|length }} source{% if entries|length != 1 %}s{% endif %}
+    </span>
+  </div>
+</div>
+
+{% for entry in entries %}
+{% set term = entry.term %}
+<div class="source-card mb-4 border-start border-3 border-{{ entry.source_color }}">
+  <div class="source-card__header">
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge bg-{{ entry.source_color }}">{{ entry.source_label }}</span>
+      <a href="/terms/{{ term.id }}" class="text-decoration-none fw-semibold"
+         style="font-size:0.93rem; color:#1e293b;">
+        {{ term.preferred_label }}
+      </a>
+    </div>
+    {% if term.term_type %}
+    <span class="badge bg-secondary" style="font-size:0.72rem;">{{ term.term_type }}</span>
+    {% endif %}
+  </div>
+  <div class="source-card__body">
+
+    {% if term.source_id or term.source_uri %}
+    <div class="source-id">
+      {% if term.source_id %}ID: {{ term.source_id }}{% endif %}
+      {% if term.source_uri %}
+        {% if term.source_id %} · {% endif %}
+        <a href="{{ term.source_uri }}" target="_blank" rel="noopener"
+           style="color:var(--copi-blue);">URI ↗</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if term.definition %}
+      {% if request.state.user or term.source not in copyrighted_sources %}
+      <p class="source-def">{{ term.definition }}</p>
+      {% else %}
+      <p class="source-no-def">Faça login para ver esta definição.</p>
+      {% endif %}
+    {% else %}
+    <p class="source-no-def">No definition available.</p>
+    {% endif %}
+
+    <div class="row g-3">
+
+      {% if term.synonyms %}
+      <div class="col-md-4">
+        <div class="meta-label">Synonyms</div>
+        <ul class="meta-list">
+          {% for syn in term.synonyms %}
+          <li>{{ syn.label }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if entry.parents or entry.children %}
+      <div class="col-md-4">
+        {% if entry.parents %}
+        <div class="meta-label">Parents</div>
+        <ul class="meta-list mb-3">
+          {% for p in entry.parents %}
+          <li><a href="/terms/{{ p.id }}">{{ p.preferred_label }}</a></li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if entry.children %}
+        <div class="meta-label">Children ({{ entry.children|length }}{% if entry.children|length == 30 %}+{% endif %})</div>
+        <ul class="meta-list">
+          {% for c in entry.children %}
+          <li><a href="/terms/{{ c.id }}">{{ c.preferred_label }}</a></li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if term.properties %}
+      <div class="col-md-4">
+        <div class="meta-label">Properties ({{ term.properties|length }})</div>
+        <ul class="meta-list">
+          {% for prop in term.properties[:10] %}
+          <li>
+            <span style="font-weight:500;">{{ prop.name }}</span>
+            {% if prop.datatype %}
+            <code style="color:var(--copi-muted); font-size:0.78rem; margin-left:0.3rem;">{{ prop.datatype }}</code>
+            {% endif %}
+          </li>
+          {% endfor %}
+          {% if term.properties|length > 10 %}
+          <li style="color:var(--copi-muted);">… and {{ term.properties|length - 10 }} more —
+            <a href="/terms/{{ term.id }}">view all</a>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

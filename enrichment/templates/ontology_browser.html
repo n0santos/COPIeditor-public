@@ -1,0 +1,644 @@
+{% extends "base.html" %}
+
+{% block title %}Imported Ontologies — COPI{% endblock %}
+
+{% block head %}
+<style>
+  /* ── Layout ── */
+  .onto-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 1rem;
+    height: calc(100vh - 130px);
+  }
+
+  /* ── Left panel ── */
+  .onto-list-panel {
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border: 1px solid var(--copi-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .onto-list-header {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--copi-border);
+    background: #f8fafc;
+    flex-shrink: 0;
+  }
+  .onto-list-header input {
+    width: 100%;
+    border: 1px solid var(--copi-border);
+    border-radius: 5px;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.83rem;
+    outline: none;
+  }
+  .onto-list-header input:focus { border-color: var(--copi-blue); }
+  .onto-filter-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .onto-filter-tabs button {
+    font-size: 0.72rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 20px;
+    border: 1px solid var(--copi-border);
+    background: white;
+    cursor: pointer;
+    color: var(--copi-muted);
+    transition: all .15s;
+  }
+  .onto-filter-tabs button.active {
+    background: var(--copi-blue);
+    border-color: var(--copi-blue);
+    color: white;
+  }
+  .onto-list-count {
+    font-size: 0.72rem;
+    color: var(--copi-muted);
+    margin-top: 0.4rem;
+  }
+  .onto-class-list {
+    flex: 1;
+    overflow-y: auto;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .onto-class-list li {
+    padding: 0.45rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: background .1s;
+  }
+  .onto-class-list li:hover { background: #f0f7ff; }
+  .onto-class-list li.selected { background: #dbeafe; }
+  .onto-class-list li .cls-label {
+    font-size: 0.83rem;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .onto-class-list li .cls-short {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    font-family: monospace;
+    flex-shrink: 0;
+  }
+
+  /* Source badges */
+  .src-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    border-radius: 3px;
+    padding: 1px 4px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .src-bfo  { background: #dbeafe; color: #1d4ed8; }
+  .src-iof  { background: #dcfce7; color: #15803d; }
+  .src-both { background: #fef3c7; color: #b45309; }
+
+  /* ── Right panel ── */
+  .onto-detail-panel {
+    background: white;
+    border: 1px solid var(--copi-border);
+    border-radius: 8px;
+    overflow-y: auto;
+    padding: 1.5rem;
+  }
+  .onto-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--copi-muted);
+    font-size: 0.9rem;
+  }
+
+  /* Detail sections */
+  .onto-class-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.25rem;
+  }
+  .onto-class-uri {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    word-break: break-all;
+    margin-bottom: 1rem;
+  }
+  .onto-section {
+    margin-bottom: 1.25rem;
+  }
+  .onto-section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--copi-muted);
+    margin-bottom: 0.35rem;
+  }
+  .onto-section-body {
+    font-size: 0.88rem;
+    color: #334155;
+    line-height: 1.6;
+  }
+  .onto-fol {
+    font-family: monospace;
+    font-size: 0.83rem;
+    background: #f8fafc;
+    border: 1px solid var(--copi-border);
+    border-radius: 5px;
+    padding: 0.6rem 0.8rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .onto-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .onto-chip {
+    font-size: 0.78rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    border: 1px solid var(--copi-border);
+    background: #f1f5f9;
+    color: #334155;
+    cursor: pointer;
+    transition: background .1s;
+    text-decoration: none;
+  }
+  .onto-chip:hover { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+  .onto-divider {
+    border: none;
+    border-top: 1px solid var(--copi-border);
+    margin: 1rem 0;
+  }
+  .anno-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--copi-border);
+    margin-bottom: 1rem;
+  }
+  .anno-tab {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.9rem;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--copi-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color .15s, border-color .15s;
+  }
+  .anno-tab.active { color: var(--copi-blue); border-bottom-color: var(--copi-blue); font-weight: 600; }
+  .anno-pane { display: none; }
+  .anno-pane.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-baseline gap-2 mb-3">
+  <h1 class="h4 mb-0 fw-bold" data-i18n="onto.title">Imported Ontologies</h1>
+  <span class="text-muted" style="font-size:.85rem" data-i18n="onto.sub">
+    Browse BFO 2020 and IOF-Core classes with their definitions and axioms
+  </span>
+</div>
+
+<!-- Mode switch: Classes vs Properties -->
+<div style="display:flex;gap:0.25rem;margin-bottom:0.75rem;">
+  <button id="mode-classes-btn" class="btn btn-sm btn-primary" onclick="switchMode('classes')" style="font-size:0.78rem;">Classes</button>
+  <button id="mode-props-btn"   class="btn btn-sm btn-outline-secondary" onclick="switchMode('props')" style="font-size:0.78rem;">Properties</button>
+</div>
+
+<div class="onto-layout">
+
+  <!-- ── Left panel: searchable list (classes or properties) ── -->
+  <div class="onto-list-panel">
+    <div class="onto-list-header">
+      <input type="search" id="onto-search" placeholder="Search classes…"
+             data-i18n-ph="onto.search_ph" oninput="onSearch(this.value)">
+      <div class="onto-filter-tabs" id="class-filter-tabs">
+        <button class="active" data-filter="all" onclick="setFilter('all', this)"
+                data-i18n="onto.all">All</button>
+        <button data-filter="BFO" onclick="setFilter('BFO', this)"
+                data-i18n="onto.bfo_only">BFO only</button>
+        <button data-filter="IOF-Core" onclick="setFilter('IOF-Core', this)"
+                data-i18n="onto.iof_only">IOF-Core only</button>
+        <button data-filter="BOTH" onclick="setFilter('BOTH', this)"
+                data-i18n="onto.both">Both</button>
+      </div>
+      <div class="onto-filter-tabs d-none" id="prop-filter-tabs">
+        <button class="active" data-ptype="all" onclick="setPropFilter('all', this)">All</button>
+        <button data-ptype="ObjectProperty"     onclick="setPropFilter('ObjectProperty', this)">Object</button>
+        <button data-ptype="DatatypeProperty"   onclick="setPropFilter('DatatypeProperty', this)">Datatype</button>
+        <button data-ptype="AnnotationProperty" onclick="setPropFilter('AnnotationProperty', this)">Annotation</button>
+      </div>
+      <div class="onto-list-count" id="class-count"></div>
+    </div>
+    <ul class="onto-class-list" id="class-list"></ul>
+  </div>
+
+  <!-- ── Right panel: class detail ── -->
+  <div class="onto-detail-panel" id="detail-panel">
+    <div class="onto-placeholder" id="detail-placeholder">
+      <span data-i18n="onto.select">Select a class on the left to see its details.</span>
+    </div>
+    <div id="detail-content" style="display:none;"></div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const ALL_CLASSES = {{ classes | tojson }};
+let _filtered = ALL_CLASSES;
+let _activeFilter = 'all';
+let _searchQ = '';
+let _selectedUri = null;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+  renderList(ALL_CLASSES);
+
+  // If URL has ?uri= param, load that class
+  const params = new URLSearchParams(location.search);
+  if (params.has('uri')) {
+    loadDetail(params.get('uri'));
+  }
+});
+
+// ── Filtering & search ───────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  _activeFilter = f;
+  document.querySelectorAll('.onto-filter-tabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+let _searchTimer = null;
+function onSearch(q) {
+  _searchQ = q.trim().toLowerCase();
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(applyFilters, 180);
+}
+
+function applyFilters() {
+  let list = ALL_CLASSES;
+  if (_activeFilter !== 'all') {
+    list = list.filter(c => c.source === _activeFilter);
+  }
+  if (_searchQ) {
+    list = list.filter(c =>
+      c.label.toLowerCase().includes(_searchQ) ||
+      c.short_id.toLowerCase().includes(_searchQ)
+    );
+  }
+  _filtered = list;
+  renderList(list);
+}
+
+// ── Render list ───────────────────────────────────────────────────────────────
+function renderList(classes) {
+  const ul = document.getElementById('class-list');
+  const frag = document.createDocumentFragment();
+  classes.forEach(c => {
+    const li = document.createElement('li');
+    if (c.uri === _selectedUri) li.classList.add('selected');
+    li.dataset.uri = c.uri;
+
+    const badge = document.createElement('span');
+    badge.className = 'src-badge src-' + c.source.toLowerCase().replace('-core', '').replace('both', 'both');
+    badge.textContent = c.source === 'BOTH' ? '★' : c.source === 'BFO' ? 'B' : 'I';
+    badge.title = c.source;
+
+    const label = document.createElement('span');
+    label.className = 'cls-label';
+    label.textContent = c.label;
+
+    const short = document.createElement('span');
+    short.className = 'cls-short';
+    short.textContent = c.short_id;
+
+    li.appendChild(badge);
+    li.appendChild(label);
+    li.appendChild(short);
+    li.addEventListener('click', () => selectClass(c.uri, li));
+    frag.appendChild(li);
+  });
+  ul.innerHTML = '';
+  ul.appendChild(frag);
+
+  const countEl = document.getElementById('class-count');
+  const total = classes.length;
+  const word = 'classes';
+  countEl.textContent = `${total} ${word}`;
+}
+
+// ── Select & load class ───────────────────────────────────────────────────────
+function selectClass(uri, liEl) {
+  _selectedUri = uri;
+  // highlight
+  document.querySelectorAll('.onto-class-list li').forEach(el => el.classList.remove('selected'));
+  if (liEl) liEl.classList.add('selected');
+  loadDetail(uri);
+  // update URL without reload
+  const url = new URL(location.href);
+  url.searchParams.set('uri', uri);
+  history.replaceState(null, '', url);
+}
+
+async function loadDetail(uri) {
+  _selectedUri = uri;
+  // highlight matching item in list
+  document.querySelectorAll('.onto-class-list li').forEach(el => {
+    el.classList.toggle('selected', el.dataset.uri === uri);
+  });
+
+  const panel = document.getElementById('detail-content');
+  const placeholder = document.getElementById('detail-placeholder');
+  panel.style.display = 'none';
+  placeholder.style.display = 'flex';
+  placeholder.innerHTML = '<span>Loading…</span>';
+
+  try {
+    const resp = await fetch('/enrich/api/ontology-class?uri=' + encodeURIComponent(uri));
+    if (!resp.ok) throw new Error(resp.statusText);
+    const cls = await resp.json();
+    renderDetail(cls);
+  } catch (e) {
+    placeholder.innerHTML = `<span style="color:red">Error: ${e.message}</span>`;
+  }
+}
+
+// ── Render detail ─────────────────────────────────────────────────────────────
+function srcBadgeHtml(source) {
+  const cls = source === 'BOTH' ? 'src-both' : source === 'BFO' ? 'src-bfo' : 'src-iof';
+  return `<span class="src-badge ${cls}">${source}</span>`;
+}
+
+function section(labelKey, labelFallback, content, isFol) {
+  if (!content) return '';
+  const escaped = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const body = isFol
+    ? `<pre class="onto-fol">${escaped}</pre>`
+    : `<div class="onto-section-body">${escaped}</div>`;
+  return `
+    <div class="onto-section">
+      <div class="onto-section-label" data-i18n="${labelKey}">${labelFallback}</div>
+      ${body}
+    </div>`;
+}
+
+function chipList(items, labelKey, labelFallback) {
+  if (!items || items.length === 0) return '';
+  const chips = items.map(it =>
+    `<a class="onto-chip" href="#" onclick="loadDetail('${it.uri}'); return false;"
+       title="${it.uri}">${srcBadgeHtml(it.source)} ${it.label}</a>`
+  ).join('');
+  return `
+    <div class="onto-section">
+      <div class="onto-section-label" data-i18n="${labelKey}">${labelFallback}</div>
+      <div class="onto-chip-list">${chips}</div>
+    </div>`;
+}
+
+function renderDetail(cls) {
+  const placeholder = document.getElementById('detail-placeholder');
+  const panel = document.getElementById('detail-content');
+  const hasBfo = cls.source === 'BFO' || cls.source === 'BOTH';
+  const hasIof = cls.source === 'IOF-Core' || cls.source === 'BOTH';
+  const bfo = cls.bfo || {};
+  const iof = cls.iof || {};
+
+  let html = `
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <div class="onto-class-title">${cls.label}</div>
+      ${srcBadgeHtml(cls.source)}
+      ${iof.is_primitive === 'true' ? `<span class="src-badge" style="background:#fce7f3;color:#9d174d" data-i18n="onto.primitive">Primitive</span>` : ''}
+      ${iof.maturity ? `<span class="src-badge" style="background:#f1f5f9;color:#64748b">${iof.maturity}</span>` : ''}
+    </div>
+    <div class="onto-class-uri">${cls.uri}</div>`;
+
+  if (bfo.identifier) {
+    html += `<div style="font-size:.75rem;color:#94a3b8;margin-bottom:.75rem;">
+      <span data-i18n="onto.id">Identifier</span>: <code>${bfo.identifier}</code></div>`;
+  }
+
+  // Hierarchy chips
+  html += chipList(cls.parents_detail, 'onto.parents', 'Superclasses');
+  html += chipList(cls.children_detail, 'onto.children', 'Subclasses');
+  html += chipList(cls.disjoints_detail, 'onto.disjoints', 'Disjoint with');
+
+  if (cls.parents_detail?.length || cls.children_detail?.length || cls.disjoints_detail?.length) {
+    html += '<hr class="onto-divider">';
+  }
+
+  // ── Annotation tabs ──
+  const hasBfoAnns = hasBfo && (bfo.definition || bfo.example || bfo.scope_note || bfo.alt_label);
+  const hasIofAnns = hasIof && Object.values(iof).some(v => v && v !== 'false');
+
+  if (hasBfoAnns && hasIofAnns) {
+    // Show tabs when there are annotations from both sources
+    html += `
+      <div class="anno-tabs">
+        <button class="anno-tab active" onclick="switchTab('bfo', this)">BFO 2020</button>
+        <button class="anno-tab" onclick="switchTab('iof', this)">IOF-Core</button>
+      </div>
+      <div id="tab-bfo" class="anno-pane active">
+        ${bfoPane(bfo)}
+      </div>
+      <div id="tab-iof" class="anno-pane">
+        ${iofPane(iof)}
+      </div>`;
+  } else if (hasBfoAnns) {
+    html += bfoPane(bfo);
+  } else if (hasIofAnns) {
+    html += iofPane(iof);
+  }
+
+  panel.innerHTML = html;
+  panel.style.display = 'block';
+  placeholder.style.display = 'none';
+
+  // Re-apply translations if PT active
+  const lang = localStorage.getItem('copi_lang') || 'en';
+  if (lang !== 'en' && typeof applyTranslations === 'function') {
+    applyTranslations(lang);
+  }
+}
+
+function bfoPane(bfo) {
+  return section('onto.definition', 'Definition', bfo.definition)
+    + section('onto.example', 'Example', bfo.example)
+    + section('onto.scope', 'Scope Note', bfo.scope_note)
+    + (bfo.alt_label ? `<div class="onto-section"><div class="onto-section-label">Alt Label</div>
+        <div class="onto-section-body">${bfo.alt_label}</div></div>` : '');
+}
+
+function iofPane(iof) {
+  return section('onto.nl_def',       'Natural Language Definition',    iof.natural_language_definition)
+    + section('onto.semiformal',      'Semi-Formal NL Definition',      iof.semi_formal_nl_definition)
+    + section('onto.fol_def',         'First-Order Logic Definition',   iof.first_order_logic_definition, true)
+    + section('onto.fol_axiom',       'First-Order Logic Axiom',        iof.first_order_logic_axiom, true)
+    + section('onto.semiformal_ax',   'Semi-Formal NL Axiom',           iof.semi_formal_nl_axiom)
+    + section('onto.expl_note',       'Explanatory Note',               iof.explanatory_note)
+    + section('onto.example',         'Example',                        iof.example)
+    + section('onto.counter_ex',      'Counter-Example',                iof.counter_example)
+    + section('onto.prim_rat',        'Primitive Rationale',            iof.primitive_rationale)
+    + section('onto.usage',           'Usage Note',                     iof.usage_note)
+    + (iof.synonym ? `<div class="onto-section"><div class="onto-section-label">Synonym</div>
+        <div class="onto-section-body">${iof.synonym}</div></div>` : '')
+    + (iof.abbreviation ? `<div class="onto-section"><div class="onto-section-label">Abbreviation</div>
+        <div class="onto-section-body"><code>${iof.abbreviation}</code></div></div>` : '')
+    + (iof.adapted_from ? `<div class="onto-section"><div class="onto-section-label" data-i18n="onto.adapted">Adapted from</div>
+        <div class="onto-section-body" style="font-size:.8rem;color:#94a3b8;">${iof.adapted_from}</div></div>` : '');
+}
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.anno-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.anno-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// ── Properties mode ───────────────────────────────────────────────────────────
+let _mode = 'classes';
+let ALL_PROPS = null;
+let _propFilter = 'all';
+
+async function switchMode(mode) {
+  _mode = mode;
+  document.getElementById('mode-classes-btn').className = 'btn btn-sm ' + (mode === 'classes' ? 'btn-primary' : 'btn-outline-secondary');
+  document.getElementById('mode-props-btn').className   = 'btn btn-sm ' + (mode === 'props'   ? 'btn-primary' : 'btn-outline-secondary');
+  document.getElementById('class-filter-tabs').classList.toggle('d-none', mode !== 'classes');
+  document.getElementById('prop-filter-tabs').classList.toggle('d-none', mode !== 'props');
+  document.getElementById('onto-search').value = '';
+
+  // Clear detail panel
+  document.getElementById('detail-content').style.display = 'none';
+  document.getElementById('detail-placeholder').style.display = 'flex';
+  document.getElementById('detail-placeholder').innerHTML = '<span>Select an item on the left.</span>';
+
+  if (mode === 'classes') {
+    applyFilters();
+  } else {
+    if (!ALL_PROPS) {
+      document.getElementById('class-list').innerHTML = '<li style="padding:1rem;color:#94a3b8;font-size:0.82rem;">Loading…</li>';
+      const resp = await fetch('/enrich/api/ontology-properties');
+      ALL_PROPS = await resp.json();
+    }
+    renderPropList(ALL_PROPS);
+  }
+}
+
+function setPropFilter(ptype, btn) {
+  _propFilter = ptype;
+  document.querySelectorAll('#prop-filter-tabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const q = document.getElementById('onto-search').value.trim().toLowerCase();
+  let list = ALL_PROPS || [];
+  if (ptype !== 'all') list = list.filter(p => p.prop_type === ptype);
+  if (q) list = list.filter(p => p.label.toLowerCase().includes(q) || p.short_id.toLowerCase().includes(q));
+  renderPropList(list);
+}
+
+function renderPropList(props) {
+  const ul = document.getElementById('class-list');
+  const frag = document.createDocumentFragment();
+  const PTYPE_COLOR = {
+    ObjectProperty:     'src-iof',
+    DatatypeProperty:   'src-bfo',
+    AnnotationProperty: 'src-both',
+  };
+  const PTYPE_SHORT = { ObjectProperty: 'O', DatatypeProperty: 'D', AnnotationProperty: 'A' };
+  props.forEach(p => {
+    const li = document.createElement('li');
+    li.dataset.uri = p.uri;
+
+    const badge = document.createElement('span');
+    badge.className = 'src-badge ' + (PTYPE_COLOR[p.prop_type] || 'src-bfo');
+    badge.title = p.prop_type;
+    badge.textContent = PTYPE_SHORT[p.prop_type] || '?';
+
+    const label = document.createElement('span');
+    label.className = 'cls-label';
+    label.textContent = p.label;
+
+    const short = document.createElement('span');
+    short.className = 'cls-short';
+    short.textContent = p.source;
+
+    li.appendChild(badge);
+    li.appendChild(label);
+    li.appendChild(short);
+    li.addEventListener('click', () => renderPropDetail(p, li));
+    frag.appendChild(li);
+  });
+  ul.innerHTML = '';
+  ul.appendChild(frag);
+  document.getElementById('class-count').textContent = props.length + ' properties';
+}
+
+function renderPropDetail(p, liEl) {
+  document.querySelectorAll('.onto-class-list li').forEach(el => el.classList.remove('selected'));
+  if (liEl) liEl.classList.add('selected');
+
+  const panel = document.getElementById('detail-content');
+  const placeholder = document.getElementById('detail-placeholder');
+  const PTYPE_BADGE = {
+    ObjectProperty:     'background:#eff6ff;color:#1d4ed8;',
+    DatatypeProperty:   'background:#fef3c7;color:#92400e;',
+    AnnotationProperty: 'background:#f3e8ff;color:#6b21a8;',
+  };
+  const domainHtml = p.domain ? `<div class="onto-section">
+    <div class="onto-section-label">Domain</div>
+    <div class="onto-section-body"><code>${p.domain}</code></div></div>` : '';
+  const rangeHtml = p.range ? `<div class="onto-section">
+    <div class="onto-section-label">Range</div>
+    <div class="onto-section-body"><code>${p.range}</code></div></div>` : '';
+  const defHtml = p.definition ? `<div class="onto-section">
+    <div class="onto-section-label">Definition</div>
+    <div class="onto-section-body">${p.definition}</div></div>` : '';
+  const parentHtml = p.parents && p.parents.length ? `<div class="onto-section">
+    <div class="onto-section-label">Sub-property of</div>
+    <div class="onto-section-body">${p.parents.map(u => `<code style="margin-right:.4rem;">${u.split(/[#/]/).pop()}</code>`).join('')}</div></div>` : '';
+
+  panel.innerHTML = `
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <div class="onto-class-title">${p.label}</div>
+      <span class="src-badge" style="${PTYPE_BADGE[p.prop_type] || ''}">${p.prop_type}</span>
+      <span class="src-badge ${p.source === 'BFO' ? 'src-bfo' : p.source === 'IOF-Core' ? 'src-iof' : 'src-both'}">${p.source}</span>
+    </div>
+    <div class="onto-class-uri">${p.uri}</div>
+    ${domainHtml}${rangeHtml}${parentHtml}${defHtml}
+  `;
+  panel.style.display = 'block';
+  placeholder.style.display = 'none';
+}
+
+// Override applyFilters and onSearch to handle both modes
+const _origApplyFilters = applyFilters;
+function applyFilters() {
+  if (_mode === 'props') {
+    setPropFilter(_propFilter, document.querySelector(`#prop-filter-tabs button[data-ptype="${_propFilter}"]`) || document.querySelector('#prop-filter-tabs button'));
+    return;
+  }
+  _origApplyFilters();
+}
+</script>
+{% endblock %}

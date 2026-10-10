@@ -1,0 +1,123 @@
+# COPI-Core anchoring baseline -- see scripts/check_core_anchoring.py
+#
+# Validated/exported entries that, when the gate was introduced, either reached no
+# COPI-Core operation without a recorded core_operation_gap (`unanchored`), or whose
+# transformation_kind disagrees with their anchor (`kind_mismatch:<kind>`).
+# Prune a line once the entry is re-anchored or given a gap. Never add lines.
+#
+# Format: <cluster_label>|<finding>
+
+actuator|unanchored
+bearing|unanchored
+bell nipple|unanchored
+bottom hole assembly|unanchored
+brake|unanchored
+cable tray|unanchored
+casing|unanchored
+cathodic protection system|unanchored
+centrifugal compressor casing|unanchored
+chromatograph|kind_mismatch:phase_separation
+circuit breaker|unanchored
+compensator|unanchored
+compressor casing|unanchored
+controller|unanchored
+coriolis mass flow meter|unanchored
+coupling|unanchored
+damper|unanchored
+diaphragm actuator|unanchored
+diesel engine|unanchored
+drill bit|unanchored
+drive shaft|unanchored
+electric actuator|unanchored
+electric generator|unanchored
+electric motor|unanchored
+electrical connector|unanchored
+electrical switch|unanchored
+engine|unanchored
+expansion joint|unanchored
+flame arrestor|unanchored
+flange|unanchored
+flexible riser|kind_mismatch:fluid_transport
+flow element|unanchored
+flow indicator|unanchored
+flow measuring element|unanchored
+flow meter|unanchored
+flowline|kind_mismatch:fluid_transport
+furnace|kind_mismatch:chemical_transformation
+fuse|unanchored
+gas engine|unanchored
+gas turbine|unanchored
+gasket|unanchored
+gear casing|unanchored
+gear pump|kind_mismatch:mechanical_power_transmission
+gear wheel|unanchored
+gearbox|unanchored
+globe valve body|kind_mismatch:fluid_transport
+header|kind_mismatch:flow_direction_control
+hopper|kind_mismatch:flow_regulation
+hose|kind_mismatch:mechanical_power_transmission
+housing|unanchored
+hydraulic actuator|unanchored
+hydraulic motor|unanchored
+impeller|kind_mismatch:mechanical_power_transmission
+input shaft|unanchored
+manifold|kind_mismatch:flow_direction_control
+manual actuator|unanchored
+mill|unanchored
+motor|unanchored
+nozzle|kind_mismatch:pressure_reduction
+orifice plate|unanchored
+output shaft|unanchored
+panel|unanchored
+pig launcher|unanchored
+pig receiver|unanchored
+pig trap|unanchored
+pipe bend|kind_mismatch:flow_direction_control
+pipe elbow|kind_mismatch:flow_direction_control
+pipe reducer|kind_mismatch:flow_regulation
+pipe tee|kind_mismatch:flow_direction_control
+pipeline|kind_mismatch:fluid_transport
+pipe|kind_mismatch:fluid_transport
+pneumatic actuator|unanchored
+pneumatic motor|unanchored
+port|unanchored
+power transformer primary winding|unanchored
+power transformer secondary winding|unanchored
+power transformer|unanchored
+pump casing|unanchored
+pump shaft|unanchored
+relay|unanchored
+riser|kind_mismatch:fluid_transport
+rotary actuator|unanchored
+rotor|kind_mismatch:mechanical_power_transmission
+scraper|unanchored
+scrubber|kind_mismatch:mass_transfer
+seat|unanchored
+shaft|unanchored
+shaker|kind_mismatch:mechanical_power_transmission
+sheave|unanchored
+sight glass|unanchored
+silencer|unanchored
+skid|unanchored
+solenoid actuator|unanchored
+spacer|unanchored
+stator winding|unanchored
+stator|unanchored
+switch contact|unanchored
+switchboard|unanchored
+thermowell stem|unanchored
+thermowell|unanchored
+thin plate|unanchored
+transformer|unanchored
+transmitter housing|unanchored
+tube bundle|kind_mismatch:fluid_transport
+tubing bowl|unanchored
+tubing hanger|unanchored
+tubing head|unanchored
+turbine|unanchored
+umbilical|unanchored
+ups unit|unanchored
+valve stem|unanchored
+wellbore|unanchored
+well|unanchored
+wireline|kind_mismatch:mechanical_power_transmission

@@ -1,0 +1,11 @@
+# Nível 1 classification: TemperatureSensor ⊑ MeasurementInstrument (must hold)
+# Returns a row (violation) if the entailment is ABSENT from the reasoned graph.
+PREFIX copi: <https://www.inf.ufrgs.br/ontologies/copi/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?violation WHERE {
+  FILTER NOT EXISTS {
+    copi:COPI_0000076 rdfs:subClassOf+ copi:COPI_0000024 .
+  }
+  BIND("TemperatureSensor (COPI_0000076) is not a subClassOf MeasurementInstrument (COPI_0000024)" AS ?violation)
+}

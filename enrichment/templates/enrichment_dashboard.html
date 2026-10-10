@@ -1,0 +1,909 @@
+{% extends "base.html" %}
+{% block title %}Enrichment Workbench — COPI Editor{% endblock %}
+
+{% block head %}
+<style>
+    :root {
+        --accent: #2563eb;
+        --accent-light: #dbeafe;
+        --success: #16a34a;
+        --warning: #d97706;
+    }
+    .method-steps {
+        display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;
+    }
+    .method-step {
+        background: rgba(255,255,255,0.15);
+        border-radius: 6px;
+        padding: 0.3rem 0.75rem;
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: rgba(255,255,255,0.9);
+    }
+    .workbench-hero {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 1.5rem 1.75rem 1.25rem;
+        margin-bottom: 1.75rem;
+    }
+    .workbench-hero h4 { font-weight: 300; letter-spacing: -0.02em; margin: 0; }
+    .workbench-hero p  { opacity: 0.8; font-size: 0.88rem; margin: 0.25rem 0 0; }
+    .cluster-card {
+        border: 1px solid var(--copi-border);
+        border-radius: 8px;
+        padding: 0.75rem;
+        background: white;
+        transition: box-shadow 0.15s;
+        cursor: pointer;
+        position: relative;
+    }
+    .cluster-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+    .cluster-card.enriched { border-left: 3px solid var(--success); }
+    .cluster-card.selected { border: 2px solid var(--accent) !important; background: #eff6ff; }
+    .status-badge {
+        font-size: 0.73rem; padding: 0.2rem 0.55rem;
+        border-radius: 20px; font-weight: 500;
+        display: inline-flex; align-items: center; gap: 0.28rem;
+    }
+    .status-badge::before {
+        content: '';
+        display: inline-block;
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .status-proposed  { background: #fef3c7; color: #92400e; }
+    .status-proposed::before  { background: #d97706; }
+    .status-reviewed  { background: #dbeafe; color: #1e40af; }
+    .status-reviewed::before  { background: #3b82f6; }
+    .status-validated { background: #dcfce7; color: #166534; }
+    .status-validated::before { background: #16a34a; }
+    .status-exported  { background: #f3e8ff; color: #6b21a8; }
+    .status-exported::before  { background: #7c3aed; }
+    #enrichModal .modal-header { background: var(--accent); color: white; }
+    .spinner-border { width: 1rem; height: 1rem; }
+    .section-title {
+        font-size: 0.75rem; text-transform: uppercase;
+        letter-spacing: 0.08em; color: var(--copi-muted);
+        margin-bottom: 0.5rem; font-weight: 600;
+    }
+    .cluster-checkbox {
+        position: absolute;
+        top: 0.4rem; right: 0.4rem;
+        width: 15px; height: 15px;
+        cursor: pointer;
+        accent-color: var(--accent);
+        z-index: 2;
+    }
+    #bulk-bar {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: #1e3a5f; color: white;
+        padding: 0.75rem 1.5rem;
+        display: flex; align-items: center; justify-content: space-between;
+        z-index: 1050; box-shadow: 0 -2px 12px rgba(0,0,0,.2);
+        transform: translateY(100%); transition: transform .2s;
+    }
+    #bulk-bar.visible { transform: translateY(0); }
+
+    /* Cluster grid */
+    #cluster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 0.5rem; }
+    #cluster-summary { font-size:0.78rem; color:#64748b; margin-bottom:0.5rem; }
+    #cluster-loading { text-align:center; padding:2rem; color:#94a3b8; font-size:0.85rem; }
+
+    .oos-badge {
+        font-size:0.6rem; font-weight:500; letter-spacing:0.02em;
+        background:#e2e8f0; color:#64748b;
+        padding:0.15rem 0.4rem; border-radius:3px;
+    }
+    .dup-badge {
+        font-size:0.6rem; font-weight:500; letter-spacing:0.02em;
+        background:#fef3c7; color:#92400e;
+        padding:0.15rem 0.4rem; border-radius:3px;
+    }
+    .scope-btn {
+        background:none; border:none; padding:0; cursor:pointer;
+        font-size:0.68rem;
+    }
+
+    /* Proposal list item — status-based left border */
+    #proposalList .list-group-item { padding: 0.6rem 0.85rem; border-left: 3px solid transparent; }
+    #proposalList .list-group-item[data-status="proposed"]  { border-left-color: #d97706; }
+    #proposalList .list-group-item[data-status="reviewed"]  { border-left-color: #3b82f6; }
+    #proposalList .list-group-item[data-status="validated"] { border-left-color: #16a34a; }
+    #proposalList .list-group-item[data-status="exported"]  { border-left-color: #7c3aed; }
+    #proposalList .list-group-item h6 {
+        font-family: 'DM Serif Display', Georgia, serif;
+        font-size: 0.95rem;
+        font-weight: 400;
+        letter-spacing: -0.01em;
+        margin-bottom: 0.15rem;
+    }
+
+    /* Filter bar */
+    .filter-bar {
+        display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap;
+    }
+    .filter-bar input[type=search] { flex:1; min-width:160px; }
+    .filter-pill {
+        font-size:0.75rem; padding:0.25rem 0.65rem; border-radius:20px; border:1px solid #cbd5e1;
+        background:white; cursor:pointer; white-space:nowrap; color:#475569;
+    }
+    .filter-pill.active { background:#1e3a5f; color:white; border-color:#1e3a5f; }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- Hero sub-header -->
+    <div class="workbench-hero">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h4 data-i18n="dash.hero_title">RDL Enrichment Workbench</h4>
+                <p data-i18n="dash.hero_sub">LLM-assisted axiomatization of industrial equipment classes using the BFO/IOF-Core 5-step method</p>
+                <div class="method-steps">
+                    <span class="method-step" data-i18n="dash.step1">① Identity-Giving Function</span>
+                    <span class="method-step" data-i18n="dash.step2">② Genus Definition</span>
+                    <span class="method-step" data-i18n="dash.step3">③ Differentia Specifica</span>
+                    <span class="method-step" data-i18n="dash.step4">④ Necessary Parts</span>
+                    <span class="method-step" data-i18n="dash.step5">⑤ Process Participation Signature</span>
+                </div>
+            </div>
+            <div class="d-flex gap-2 flex-shrink-0 flex-wrap">
+                <a href="/enrich/ontology.ttl" class="btn btn-sm"
+                   style="background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.3); font-size:0.8rem;"
+                   data-i18n="dash.dl_ontology">⬇ Download Ontology</a>
+                <a href="/enrich/backup" class="btn btn-sm"
+                   style="background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.2); font-size:0.8rem;"
+                   title="Download enrichment.db backup"
+                   data-i18n="dash.backup_db">💾 Backup DB</a>
+                <a href="/enrich/queue" class="btn btn-sm"
+                   style="background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.2); font-size:0.8rem;"
+                   data-i18n="dash.batch_queue">⚙ Batch Queue</a>
+                <a href="/enrich/auxiliary" class="btn btn-sm"
+                   style="background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.2); font-size:0.8rem;">
+                  🔵 Conceitos Auxiliares{% if aux_pending %} <span class="badge bg-warning text-dark ms-1" style="font-size:0.68rem;">{{ aux_pending }}</span>{% endif %}
+                </a>
+                <a href="/enrich/export/odk.owl" class="btn btn-sm"
+                   style="background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.2); font-size:0.8rem;"
+                   title="Download ODK-compatible copi-edit.owl (OWL Functional Syntax)">
+                    📦 ODK Export (.owl)
+                </a>
+                <a href="/enrich/export/docs" target="_blank" class="btn btn-sm"
+                   style="background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.2); font-size:0.8rem;"
+                   title="Preview static documentation (will be published to docs/ on GitHub)">
+                    📄 Preview Docs
+                </a>
+
+                <button onclick="document.getElementById('scopeClassifyPanel').classList.toggle('d-none')"
+                        class="btn btn-sm"
+                        style="background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.2); font-size:0.8rem;"
+                        title="Classify all unscoped clusters against the COPI material-artifact scope using Claude Haiku batch">
+                    🔍 Scope Batch Classify
+                </button>
+                <button onclick="document.getElementById('aliasPanel').classList.toggle('d-none'); loadAliases();"
+                        class="btn btn-sm"
+                        style="background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.2); font-size:0.8rem;"
+                        title="Detect and manage duplicate or equivalent cluster labels">
+                    🔀 Aliases
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Alias / Deduplication Panel -->
+    <div id="aliasPanel" class="d-none mb-3">
+      <div class="card border-0 shadow-sm" style="border-radius:8px;">
+        <div class="card-body py-3 px-4">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span style="font-size:1.1rem;">🔀</span>
+            <strong style="font-size:0.9rem;">Duplicate / Alias Detection</strong>
+          </div>
+          <p class="text-muted mb-2" style="font-size:0.78rem;">
+            Clusters that may refer to the same concept as an already-enriched class.
+            Accept to emit an <code>owl:equivalentClass</code> or <code>skos:exactMatch</code> axiom in the export instead of a new class.
+          </p>
+          {% if request.state.user %}
+          <div class="d-flex gap-2 align-items-center mb-3 flex-wrap">
+            <button class="btn btn-sm btn-primary" onclick="detectAliases(this)">⚡ Detect now</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadAliases()">↺ Refresh</button>
+            <span id="aliasMsg" class="text-muted" style="font-size:0.8rem;"></span>
+          </div>
+
+          <!-- Manual alias form -->
+          <div class="mb-3" style="background:#f8fafc; border-radius:6px; padding:0.75rem 1rem;">
+            <div class="mb-1" style="font-size:0.78rem; font-weight:600; color:#374151;">Add manual mapping</div>
+            <div class="d-flex gap-2 flex-wrap align-items-end">
+              <div>
+                <label style="font-size:0.72rem; color:#6b7280;">Source label</label>
+                <input type="text" id="aliasSourceInput" class="form-control form-control-sm" placeholder="e.g. production separator" style="width:180px;">
+              </div>
+              <div>
+                <label style="font-size:0.72rem; color:#6b7280;">Maps to</label>
+                <input type="text" id="aliasTargetInput" class="form-control form-control-sm" placeholder="e.g. separator" style="width:180px;">
+              </div>
+              <div>
+                <label style="font-size:0.72rem; color:#6b7280;">Relation</label>
+                <select id="aliasRelType" class="form-select form-select-sm" style="width:150px;">
+                  <option value="exactMatch">exactMatch</option>
+                  <option value="equivalentClass">equivalentClass</option>
+                  <option value="broadMatch">broadMatch</option>
+                  <option value="narrowMatch">narrowMatch</option>
+                </select>
+              </div>
+              <button class="btn btn-sm btn-outline-primary" onclick="createAlias()">Add</button>
+            </div>
+          </div>
+          {% endif %}
+
+          <div id="aliasTable" style="font-size:0.8rem;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scope Batch Classify Panel -->
+    <div id="scopeClassifyPanel" class="d-none mb-3">
+      <div class="card border-0 shadow-sm" style="border-radius:8px;">
+        <div class="card-body py-3 px-4">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span style="font-size:1.1rem;">🔍</span>
+            <strong style="font-size:0.9rem;">Scope Batch Classification</strong>
+            <span class="text-muted ms-1" style="font-size:0.78rem;">— Claude Haiku · batches of 100 · 50% off · async ~1 h</span>
+          </div>
+          <p class="text-muted mb-2" style="font-size:0.78rem;">
+            Classifies all unscoped cluster labels against the COPI scope:
+            <em>material artifacts that are part of a petroleum production plant and bear at least one function
+            involving transport, processing, control, monitoring, measurement, containment or offloading of material or energy.</em>
+            Labels are sent in groups of 100 as a single Anthropic Message Batch.
+          </p>
+          <div class="d-flex gap-2 align-items-center flex-wrap mb-3">
+            <button class="btn btn-sm btn-primary" id="scopeBatchSubmitBtn" onclick="submitScopeBatch(this)">
+              ⚡ Submit Scope Batch
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadScopeBatches()">↺ Refresh</button>
+            <span id="scopeBatchMsg" class="text-muted" style="font-size:0.8rem;"></span>
+          </div>
+          <div id="scopeBatchTable" style="font-size:0.8rem;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+        <!-- Left: Existing Enrichments -->
+        <div class="col-lg-5 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0" data-i18n="dash.proposals">Enrichment Proposals</h5>
+                <span class="text-muted small">{{ enrichments|length }} <span data-i18n="dash.total">total</span></span>
+            </div>
+
+            {% if enrichments %}
+            <input type="search" id="proposalSearch" class="form-control form-control-sm mb-2"
+                   placeholder="Filter proposals…" autocomplete="off">
+            <div class="d-flex gap-1 flex-wrap mb-2" id="proposalStatusPills">
+                <button class="filter-pill active" data-pstatus="all" onclick="setPropStatusFilter('all', this)">All</button>
+                <button class="filter-pill" data-pstatus="proposed"  onclick="setPropStatusFilter('proposed', this)">Proposed</button>
+                <button class="filter-pill" data-pstatus="reviewed"  onclick="setPropStatusFilter('reviewed', this)">Reviewed</button>
+                <button class="filter-pill" data-pstatus="validated" onclick="setPropStatusFilter('validated', this)">Validated</button>
+                <button class="filter-pill" data-pstatus="exported"  onclick="setPropStatusFilter('exported', this)">Exported</button>
+            </div>
+            <div class="list-group" id="proposalList">
+                {% for e in enrichments %}
+                <a href="/enrich/{{ e.id }}" class="list-group-item list-group-item-action"
+                   data-label="{{ e.cluster_label | lower }}"
+                   data-status="{{ e.status }}"
+                   data-pt="{{ (e.nl_definition_pt or '')[:80] | escape }}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1 text-capitalize proposal-title-en">
+                                {{ e.cluster_label }}
+                                {% if e.primary_definition_conflict %}
+                                <span title="Conflicts with the ISO 15926-4 primary definition — see detail page" style="color:#b91c1c;">⚠</span>
+                                {% endif %}
+                            </h6>
+                            {% if e.label_pt %}
+                            <h6 class="mb-1 text-capitalize proposal-title-pt d-none">{{ e.label_pt }}</h6>
+                            {% endif %}
+                            <small class="text-muted proposal-subtitle-en">
+                                {{ e.genus or '—' }} · {{ e.function_name or '—' }}
+                            </small>
+                            {% if e.nl_definition_pt %}
+                            <small class="text-muted proposal-subtitle-pt d-none"
+                                   style="font-style:italic;color:#6b7280;">
+                                {{ e.nl_definition_pt[:80] }}{% if e.nl_definition_pt|length > 80 %}…{% endif %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        <div class="text-end">
+                            <span class="status-badge status-{{ e.status }}">{{ e.status }}</span>
+                            <br>
+                            <small class="text-muted">{{ e.axiom_mode }}</small>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            <div id="proposalEmpty" class="text-muted small py-2 d-none">No proposals match.</div>
+            {% else %}
+            <div class="text-center text-muted py-4">
+                <p>No enrichments yet. Select a cluster to begin.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right: Available Clusters (loaded via JS) -->
+        <div class="col-lg-7">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0" data-i18n="dash.clusters">Available Clusters</h5>
+            </div>
+
+            <div class="filter-bar">
+                <input type="search" id="clusterSearch" class="form-control form-control-sm"
+                       placeholder="Search clusters…" data-i18n-ph="dash.search_ph" autocomplete="off">
+                <button class="filter-pill active" id="pill-inscope" onclick="togglePill('inscope')" data-i18n="dash.pill_inscope">In scope</button>
+                <button class="filter-pill" id="pill-oos" onclick="togglePill('oos')" data-i18n="dash.pill_oos">Out of scope</button>
+                <button class="filter-pill active" id="pill-enriched" onclick="togglePill('enriched')" data-i18n="dash.pill_enriched">Enriched</button>
+                <button class="filter-pill active" id="pill-unenriched" onclick="togglePill('unenriched')" data-i18n="dash.pill_unenr">Not enriched</button>
+            </div>
+
+            <div id="cluster-summary" style="display:none;"></div>
+            <div id="cluster-loading">
+                <div class="spinner-border text-secondary me-2" style="width:1rem;height:1rem;"></div>
+                <span data-i18n="dash.loading">Loading clusters…</span>
+            </div>
+            <div id="cluster-grid" style="display:none;"></div>
+            <div id="cluster-more" style="display:none; text-align:center; margin-top:0.75rem;">
+                <button class="btn btn-sm btn-outline-secondary" onclick="showMore()" data-i18n="dash.show_more">Show more</button>
+            </div>
+        </div>
+    </div>
+
+    {% if request.state.user %}
+    <!-- Bulk selection bar -->
+    <div id="bulk-bar">
+      <span id="bulk-label" style="font-size:0.9rem; font-weight:600;">0 clusters selected</span>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-light" onclick="clearSelection()" data-i18n="dash.clear">Clear</button>
+        <button class="btn btn-sm btn-light" style="color:#1e3a5f; font-weight:600;"
+                onclick="addSelectedToQueue()" data-i18n="dash.add_queue">
+          ⚙ Add to Queue
+        </button>
+        <button class="btn btn-sm btn-warning" style="font-weight:600;"
+                onclick="runSelectedNow()" data-i18n="dash.enrich_now">
+          ▶ Enrich now
+        </button>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if request.state.user %}
+    <!-- Enrichment Modal -->
+    <div class="modal fade" id="enrichModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Enrich: <span id="modalClusterLabel"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">
+                        This will send the definitions from <strong id="modalSourceCount"></strong> source(s)
+                        to Claude, which will apply the 5-step enrichment method and propose axioms.
+                    </p>
+                    <div id="enrichError" class="alert alert-danger d-none"></div>
+                    <div id="enrichProgress" class="d-none">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="spinner-border text-primary" style="width:1rem;height:1rem;"></div>
+                            <span>Running 5-step enrichment analysis…</span>
+                        </div>
+                        <div class="progress mt-2" style="height:3px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" id="enrichFooter">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="enrichBtn" onclick="runEnrichment()">
+                        Run Enrichment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let allClusters = [];     // full list from API
+let filtered = [];        // current filtered+sorted slice
+let displayed = 0;        // how many are currently in DOM
+const PAGE = 120;         // cards per page
+
+const pills = { inscope: true, oos: false, enriched: true, unenriched: true };
+const _selected = new Set();
+let currentCluster = '';
+const modal = new bootstrap.Modal(document.getElementById('enrichModal'));
+
+// ── Pill filter ────────────────────────────────────────────────────────────
+function togglePill(key) {
+    pills[key] = !pills[key];
+    document.getElementById('pill-' + key).classList.toggle('active', pills[key]);
+    applyFilter();
+}
+
+// ── Search + filter → re-render ────────────────────────────────────────────
+let _searchTimer = null;
+document.getElementById('clusterSearch').addEventListener('input', function() {
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(applyFilter, 180);
+});
+
+function applyFilter() {
+    const q = document.getElementById('clusterSearch').value.toLowerCase().trim();
+    filtered = allClusters.filter(c => {
+        if (c.is_oos  && !pills.oos)       return false;
+        if (!c.is_oos && !pills.inscope)    return false;
+        if (c.has_enrichment  && !pills.enriched)   return false;
+        if (!c.has_enrichment && !pills.unenriched) return false;
+        if (q && !c.label.includes(q))     return false;
+        return true;
+    });
+    // Sort: enriched first, then by source_count desc
+    filtered.sort((a, b) => {
+        if (a.has_enrichment !== b.has_enrichment) return a.has_enrichment ? -1 : 1;
+        return b.source_count - a.source_count;
+    });
+    displayed = 0;
+    document.getElementById('cluster-grid').innerHTML = '';
+    renderPage();
+}
+
+// ── Render a page of cards ─────────────────────────────────────────────────
+function renderPage() {
+    const grid = document.getElementById('cluster-grid');
+    const end = Math.min(displayed + PAGE, filtered.length);
+    const frag = document.createDocumentFragment();
+    for (let i = displayed; i < end; i++) {
+        frag.appendChild(makeCard(filtered[i]));
+    }
+    grid.appendChild(frag);
+    displayed = end;
+
+    const summary = document.getElementById('cluster-summary');
+    summary.style.display = '';
+    summary.textContent = `${_T('dash.showing','Showing')} ${displayed} ${_T('dash.of','of')} ${filtered.length} ${_T('dash.clusters_word','clusters')} (${allClusters.length} ${_T('dash.total_word','total')})`;
+
+    const moreBtn = document.getElementById('cluster-more');
+    moreBtn.style.display = displayed < filtered.length ? '' : 'none';
+}
+
+function showMore() { renderPage(); }
+
+// ── Build a single card element ────────────────────────────────────────────
+function makeCard(c) {
+    const wrap = document.createElement('div');
+
+    let oosHtml = '';
+    if (c.is_oos) {
+        oosHtml = `<span class="oos-badge">oos</span>`;
+    }
+    const dupHtml = c.has_alias ? `<span class="dup-badge" title="Possible duplicate of an enriched class">~dup</span>` : '';
+    let enrichedMark = c.has_enrichment
+        ? `<span style="color:#16a34a; font-size:0.8rem;" title="${c.enrichment_status}">✓</span>` : '';
+
+    const scopeLabel  = c.is_oos ? _T('dash.inscope_btn','↩ in-scope') : _T('dash.oos_btn','✕ oos');
+    const scopeColor  = c.is_oos ? '#6b7280' : '#9ca3af';
+
+    const srcWord = c.source_count === 1 ? _T('dash.sources','source') : _T('dash.sources_pl','sources');
+    const runningBanner = c.is_running
+      ? `<div style="font-size:0.62rem;font-weight:600;color:#d97706;margin-bottom:0.2rem;">⏳ processing…</div>`
+      : c.is_pending
+        ? `<div style="font-size:0.62rem;color:#94a3b8;margin-bottom:0.2rem;">queued</div>`
+        : '';
+    const cardBorder = c.is_running ? 'border-left:3px solid #f59e0b;' : '';
+    wrap.innerHTML = `
+      <div class="cluster-card ${c.has_enrichment ? 'enriched' : ''}" data-label="${esc(c.label)}" style="${cardBorder}">
+        <input type="checkbox" class="cluster-checkbox"
+               onclick="event.stopPropagation(); toggleSelect(this, '${esc(c.label)}')"
+               title="Select for batch enrichment">
+        <div onclick="openEnrichModal('${esc(c.label)}', ${c.source_count}${c.has_enrichment ? ', ' + c.enrichment_id : ''})"
+             style="padding-right:1.4rem;">
+          ${runningBanner}
+          <div class="d-flex justify-content-between align-items-start">
+            <strong class="text-capitalize" style="font-size:0.82rem; word-break:break-word;">${escH(c.label)}</strong>
+            <div style="flex-shrink:0; margin-left:0.3rem;">${oosHtml}${dupHtml}${enrichedMark}</div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-1">
+            <small class="text-muted" style="font-size:0.68rem;">${c.source_count} ${srcWord}</small>
+            <button class="scope-btn" style="color:${scopeColor};"
+                    onclick="event.stopPropagation(); scopeToggle('${esc(c.label)}', ${c.is_oos}, this)"
+                    title="${c.is_oos ? 'Mark in-scope' : 'Mark out-of-scope'}">${scopeLabel}</button>
+          </div>
+        </div>
+      </div>`;
+    return wrap.firstElementChild;
+}
+
+function esc(s)  { return s.replace(/'/g, "\\'"); }
+function escH(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Load clusters from API ─────────────────────────────────────────────────
+async function loadClusters() {
+    try {
+        const resp = await fetch('/enrich/api/clusters');
+        allClusters = await resp.json();
+        document.getElementById('cluster-loading').style.display = 'none';
+        document.getElementById('cluster-grid').style.display = '';
+        applyFilter();
+    } catch (e) {
+        document.getElementById('cluster-loading').textContent = 'Failed to load clusters.';
+    }
+}
+
+// ── Enrichment modal ───────────────────────────────────────────────────────
+function openEnrichModal(label, sourceCount, existingId) {
+    currentCluster = label;
+    document.getElementById('modalClusterLabel').textContent = label;
+    document.getElementById('modalSourceCount').textContent = sourceCount;
+    document.getElementById('enrichError').classList.add('d-none');
+    document.getElementById('enrichProgress').classList.add('d-none');
+    const btn = document.getElementById('enrichBtn');
+    btn.disabled = false;
+    if (existingId) {
+        btn.textContent = _T('dash.rerun_enr', 'Re-run Enrichment');
+    } else {
+        btn.textContent = _T('dash.run_enr', 'Run Enrichment');
+    }
+    modal.show();
+}
+
+async function runEnrichment() {
+    const btn = document.getElementById('enrichBtn');
+    const progress = document.getElementById('enrichProgress');
+    const error = document.getElementById('enrichError');
+
+    btn.disabled = true;
+    progress.classList.remove('d-none');
+    error.classList.add('d-none');
+
+    const formData = new FormData();
+    formData.append('cluster_label', currentCluster);
+
+    try {
+        const resp = await fetch('/enrich/run', { method: 'POST', body: formData });
+        if (!resp.ok) {
+            const data = await resp.json();
+            throw new Error(data.detail || 'Enrichment failed');
+        }
+        const data = await resp.json();
+        window.location.href = data.redirect;
+    } catch (e) {
+        error.textContent = e.message;
+        error.classList.remove('d-none');
+        btn.disabled = false;
+        progress.classList.add('d-none');
+    }
+}
+
+// ── Scope toggle ───────────────────────────────────────────────────────────
+async function scopeToggle(label, currentlyOOS, btn) {
+    const newOOS = !currentlyOOS;
+    const fd = new FormData();
+    fd.append('out_of_scope', newOOS ? 'true' : 'false');
+    await fetch('/enrich/scope/' + encodeURIComponent(label), { method: 'POST', body: fd });
+
+    // Update in-memory data
+    const c = allClusters.find(x => x.label === label);
+    if (c) { c.is_oos = newOOS; c.oos_manual = newOOS; }
+
+    // If the card will be hidden by the current filter (e.g. marked OOS while
+    // inscope-only is on), remove it from the DOM without touching `displayed`.
+    // Otherwise replace just that card in-place so scroll/page position is kept.
+    const cardEl = document.querySelector(`.cluster-card[data-label="${label.replace(/"/g, '\\"')}"]`);
+    const willBeVisible = filtered.includes(c) && (
+        (newOOS  && pills.oos) || (!newOOS && pills.inscope)
+    );
+
+    if (cardEl) {
+        if (willBeVisible) {
+            // Rebuild and swap the single card
+            const newWrap = makeCard(c);
+            cardEl.replaceWith(newWrap);
+        } else {
+            // Remove from DOM and adjust counters
+            cardEl.remove();
+            displayed = Math.max(0, displayed - 1);
+            // Re-evaluate filtered list to keep it consistent
+            const idx = filtered.indexOf(c);
+            if (idx !== -1) filtered.splice(idx, 1);
+            // Show/hide the "Show more" button in case counts changed
+            document.getElementById('cluster-more').style.display =
+                displayed < filtered.length ? '' : 'none';
+            const summary = document.getElementById('cluster-summary');
+            summary.textContent = `${_T('dash.showing','Showing')} ${displayed} ${_T('dash.of','of')} ${filtered.length} ${_T('dash.clusters_word','clusters')} (${allClusters.length} ${_T('dash.total_word','total')})`;
+        }
+    }
+}
+
+// ── Multi-select ───────────────────────────────────────────────────────────
+function toggleSelect(cb, label) {
+    if (cb.checked) _selected.add(label); else _selected.delete(label);
+    cb.closest('.cluster-card').classList.toggle('selected', cb.checked);
+    updateBulkBar();
+}
+
+function updateBulkBar() {
+    document.getElementById('bulk-label').textContent =
+        _selected.size + ' cluster' + (_selected.size !== 1 ? 's' : '') + ' ' + _T('dash.selected','selected');
+    document.getElementById('bulk-bar').classList.toggle('visible', _selected.size > 0);
+}
+
+function clearSelection() {
+    _selected.clear();
+    document.querySelectorAll('.cluster-checkbox').forEach(cb => {
+        cb.checked = false;
+        cb.closest('.cluster-card')?.classList.remove('selected');
+    });
+    updateBulkBar();
+}
+
+async function addSelectedToQueue() {
+    if (!_selected.size) return;
+    const fd = new FormData();
+    fd.append('cluster_labels', Array.from(_selected).join('\n'));
+    const resp = await fetch('/enrich/queue/add', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (resp.ok) { clearSelection(); window.location.href = '/enrich/queue'; }
+    else alert('Error: ' + (data.detail || JSON.stringify(data)));
+}
+
+async function runSelectedNow() {
+    if (!_selected.size) return;
+    const labels = Array.from(_selected);
+    const bar = document.getElementById('bulk-bar');
+    const btn = bar.querySelector('button:last-child');
+    btn.disabled = true;
+
+    let done = 0;
+    for (const label of labels) {
+        btn.textContent = `Enriching ${done}/${labels.length}… (${label})`;
+        const fd = new FormData();
+        fd.append('cluster_label', label);
+        try { const r = await fetch('/enrich/run', { method: 'POST', body: fd }); if (r.ok) done++; } catch (_) {}
+    }
+    btn.textContent = `✓ Done (${done}/${labels.length})`;
+    setTimeout(() => location.reload(), 1200);
+}
+
+
+// ── Scope batch classify ────────────────────────────────────────────────────
+async function submitScopeBatch(btn) {
+    if (!confirm('Submit all unclassified cluster labels to Anthropic for scope classification?\n\nThis uses Claude Haiku in batches of 100 (50% off). Results will be ready in ~1 hour.')) return;
+    btn.disabled = true;
+    btn.textContent = '⏳ Submitting…';
+    const msg = document.getElementById('scopeBatchMsg');
+    try {
+        const resp = await fetch('/enrich/scope/batch-submit', { method: 'POST' });
+        const data = await resp.json();
+        if (!resp.ok) {
+            msg.textContent = 'Error: ' + (data.detail || JSON.stringify(data));
+            msg.style.color = '#dc2626';
+        } else if (data.submitted === 0) {
+            msg.textContent = data.message || 'Nothing to classify.';
+            msg.style.color = '#6b7280';
+        } else {
+            msg.textContent = `Batch submitted! ID: ${data.batch_id} — ${data.request_count} requests covering ${data.label_count} labels. Results in ~1 h.`;
+            msg.style.color = '#16a34a';
+            loadScopeBatches();
+        }
+    } catch (e) {
+        msg.textContent = 'Network error: ' + e.message;
+        msg.style.color = '#dc2626';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Submit Scope Batch';
+    }
+}
+
+async function pollScopeBatch(batchId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+    try {
+        const resp = await fetch('/enrich/scope/batch/' + batchId + '/status');
+        const data = await resp.json();
+        if (!resp.ok) { alert('Poll error: ' + (data.detail || JSON.stringify(data))); return; }
+        const ps = data.processing_status || 'unknown';
+        const counts = data.request_counts || {};
+        if (ps === 'ended') {
+            alert(`Batch ${batchId} finished!\nSucceeded: ${counts.succeeded||0} | Errored: ${counts.errored||0}\nClick "Import" to save scope decisions.`);
+        } else {
+            alert(`Status: ${ps}\nProcessing: ${counts.processing||0} | Succeeded: ${counts.succeeded||0} | Errored: ${counts.errored||0}`);
+        }
+        loadScopeBatches();
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Poll'; }
+    }
+}
+
+async function importScopeBatch(batchId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Importing…'; }
+    try {
+        const resp = await fetch('/enrich/scope/batch/' + batchId + '/import', { method: 'POST' });
+        const data = await resp.json();
+        if (!resp.ok) { alert('Import error: ' + (data.detail || JSON.stringify(data))); return; }
+        const errMsg = data.errors && data.errors.length ? `\n${data.errors.length} errors.` : ' No errors.';
+        alert(`Import complete! ${data.imported} scope decisions saved.${errMsg}`);
+        loadScopeBatches();
+        loadClusters(); // refresh cluster cards
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Import'; }
+    }
+}
+
+async function loadScopeBatches() {
+    const container = document.getElementById('scopeBatchTable');
+    if (!container) return;
+    try {
+        const resp = await fetch('/enrich/scope/batches');
+        const rows = await resp.json();
+        if (!rows.length) { container.innerHTML = '<div class="text-muted">No scope batches submitted yet.</div>'; return; }
+        let html = `<table class="table table-sm mb-0"><thead class="table-light"><tr>
+            <th>Batch ID</th><th class="text-center">Requests</th><th class="text-center">Labels</th>
+            <th class="text-center">Status</th><th>Submitted</th><th class="text-center">Imported</th><th></th>
+        </tr></thead><tbody>`;
+        for (const b of rows) {
+            const statusClass = b.status === 'ended' ? 'bg-success' : b.status === 'in_progress' ? 'bg-warning text-dark' : 'bg-secondary';
+            const importedCell = b.results_imported ? `<span class="text-success fw-semibold">✓ ${b.succeeded}</span>` : '—';
+            const actions = [
+                b.status !== 'ended' ? `<button class="btn btn-xs btn-outline-secondary me-1" style="font-size:.7rem;padding:1px 6px" onclick="pollScopeBatch('${b.anthropic_batch_id}',this)">Poll</button>` : '',
+                b.status === 'ended' && !b.results_imported ? `<button class="btn btn-xs btn-outline-success" style="font-size:.7rem;padding:1px 6px" onclick="importScopeBatch('${b.anthropic_batch_id}',this)">Import</button>` : '',
+            ].join('');
+            html += `<tr>
+                <td><code style="font-size:.7rem">${b.anthropic_batch_id}</code></td>
+                <td class="text-center">${b.request_count}</td>
+                <td class="text-center">${b.label_count}</td>
+                <td class="text-center"><span class="badge ${statusClass}">${b.status}</span></td>
+                <td class="text-muted">${(b.created_at||'').slice(0,16)}</td>
+                <td class="text-center">${importedCell}</td>
+                <td class="text-end">${actions}</td>
+            </tr>`;
+        }
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch (e) { container.innerHTML = '<div class="text-danger">Error loading scope batches.</div>'; }
+}
+
+// ── Alias / Deduplication ──────────────────────────────────────────────────
+async function detectAliases(btn) {
+    btn.disabled = true; btn.textContent = '⏳ Detecting…';
+    const msg = document.getElementById('aliasMsg');
+    try {
+        const resp = await fetch('/enrich/api/aliases/detect', { method: 'POST' });
+        const data = await resp.json();
+        msg.textContent = `${data.detected} new proposal(s) found.`;
+        await loadAliases();
+    } catch (e) { msg.textContent = 'Error: ' + e; }
+    finally { btn.disabled = false; btn.textContent = '⚡ Detect now'; }
+}
+
+async function loadAliases() {
+    const container = document.getElementById('aliasTable');
+    if (!container) return;
+    try {
+        const resp = await fetch('/enrich/api/aliases');
+        const rows = await resp.json();
+        if (!rows.length) {
+            container.innerHTML = '<div class="text-muted" style="font-size:0.8rem;">No proposed aliases. Click "Detect now" to scan for duplicates.</div>';
+            return;
+        }
+        let html = `<table class="table table-sm mb-0"><thead class="table-light"><tr>
+            <th>Source label</th><th>Maps to</th><th class="text-center">Confidence</th>
+            <th>Relation</th><th>Target definition</th><th></th>
+        </tr></thead><tbody>`;
+        for (const a of rows) {
+            const def = (a.target_definition || '—').substring(0, 90);
+            const relSelect = `<select class="form-select form-select-sm" id="aliasRel_${a.id}" style="width:130px;font-size:0.72rem;">
+                ${['exactMatch','equivalentClass','broadMatch','narrowMatch'].map(r =>
+                    `<option value="${r}" ${a.relation_type===r?'selected':''}>${r}</option>`).join('')}
+            </select>`;
+            html += `<tr>
+                <td><strong>${escH(a.source_label)}</strong></td>
+                <td>${escH(a.target_label)}</td>
+                <td class="text-center">${(a.confidence*100).toFixed(0)}%</td>
+                <td>${relSelect}</td>
+                <td class="text-muted" style="max-width:200px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" title="${escH(a.target_definition||'')}">
+                    ${escH(def)}${def.length===90?'…':''}
+                </td>
+                <td class="text-end" style="white-space:nowrap;">
+                    <button class="btn btn-xs btn-outline-success me-1" style="font-size:.7rem;padding:1px 6px"
+                            onclick="resolveAlias(${a.id},'accept',this)">✓ Accept</button>
+                    <button class="btn btn-xs btn-outline-danger" style="font-size:.7rem;padding:1px 6px"
+                            onclick="resolveAlias(${a.id},'reject',this)">✗ Reject</button>
+                </td>
+            </tr>`;
+        }
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch (e) { container.innerHTML = '<div class="text-danger">Error loading aliases.</div>'; }
+}
+
+async function resolveAlias(id, action, btn) {
+    btn.disabled = true;
+    const relEl = document.getElementById(`aliasRel_${id}`);
+    const fd = new FormData();
+    if (relEl) fd.append('relation_type', relEl.value);
+    const url = `/enrich/api/aliases/${id}/${action}`;
+    try {
+        await fetch(url, { method: 'POST', body: fd });
+        btn.closest('tr').remove();
+    } catch (e) { btn.disabled = false; }
+}
+
+async function createAlias() {
+    const src = document.getElementById('aliasSourceInput').value.trim();
+    const tgt = document.getElementById('aliasTargetInput').value.trim();
+    const rel = document.getElementById('aliasRelType').value;
+    if (!src || !tgt) { alert('Both source and target labels are required.'); return; }
+    const fd = new FormData();
+    fd.append('source_label', src); fd.append('target_label', tgt); fd.append('relation_type', rel);
+    await fetch('/enrich/api/aliases', { method: 'POST', body: fd });
+    document.getElementById('aliasSourceInput').value = '';
+    document.getElementById('aliasTargetInput').value = '';
+    await loadAliases();
+}
+
+// ── Proposal search + status filter ───────────────────────────────────────
+let _propStatusFilter = 'all';
+
+function applyProposalFilters() {
+    const q = (document.getElementById('proposalSearch')?.value || '').toLowerCase().trim();
+    let visible = 0;
+    document.querySelectorAll('#proposalList .list-group-item').forEach(el => {
+        const labelMatch = !q || el.dataset.label.includes(q);
+        const statusMatch = _propStatusFilter === 'all' || el.dataset.status === _propStatusFilter;
+        const show = labelMatch && statusMatch;
+        el.classList.toggle('d-none', !show);
+        if (show) visible++;
+    });
+    const empty = document.getElementById('proposalEmpty');
+    if (empty) empty.classList.toggle('d-none', visible > 0 || (!q && _propStatusFilter === 'all'));
+}
+
+function setPropStatusFilter(status, btn) {
+    _propStatusFilter = status;
+    document.querySelectorAll('#proposalStatusPills .filter-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyProposalFilters();
+}
+
+const _propSearch = document.getElementById('proposalSearch');
+if (_propSearch) {
+    _propSearch.addEventListener('input', applyProposalFilters);
+}
+
+// ── PT label toggle ────────────────────────────────────────────────────────
+function applyProposalLang() {
+    const isPT = (localStorage.getItem('coppp_lang') || 'en') === 'pt';
+    document.querySelectorAll('#proposalList .list-group-item').forEach(el => {
+        const enTitle = el.querySelector('.proposal-title-en');
+        const ptTitle = el.querySelector('.proposal-title-pt');
+        const enSub   = el.querySelector('.proposal-subtitle-en');
+        const ptSub   = el.querySelector('.proposal-subtitle-pt');
+        if (isPT) {
+            // Only hide EN if there's a PT alternative; otherwise keep EN as fallback
+            if (ptTitle) { enTitle?.classList.add('d-none'); ptTitle.classList.remove('d-none'); }
+            else          { enTitle?.classList.remove('d-none'); }
+            if (ptSub)   { enSub?.classList.add('d-none');   ptSub.classList.remove('d-none'); }
+            else          { enSub?.classList.remove('d-none'); }
+        } else {
+            enTitle?.classList.remove('d-none'); ptTitle?.classList.add('d-none');
+            enSub?.classList.remove('d-none');   ptSub?.classList.add('d-none');
+        }
+    });
+}
+applyProposalLang();
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadClusters();
+</script>
+{% endblock %}

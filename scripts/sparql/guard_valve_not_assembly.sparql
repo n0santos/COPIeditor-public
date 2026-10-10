@@ -1,0 +1,11 @@
+# ODR-013 regression guard: Valve ⊄ iof:Assembly (must NOT hold)
+# Returns a row (violation) if Valve IS inferred as a subclass of Assembly.
+# If this query returns results, the ODR-007 error has been re-introduced.
+PREFIX copi:     <https://www.inf.ufrgs.br/ontologies/copi/>
+PREFIX iof-core: <https://spec.industrialontologies.org/ontology/construct/>
+PREFIX rdfs:     <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?violation WHERE {
+  copi:COPI_0000077 rdfs:subClassOf+ iof-core:Assembly .
+  BIND("ODR-013 REGRESSION: Valve (COPI_0000077) is inferred as subClassOf iof-core:Assembly — check genus in enrichment DB (should be MaterialArtifact, not Assembly)" AS ?violation)
+}

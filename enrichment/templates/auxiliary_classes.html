@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Conceitos Auxiliares{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:0.82rem;">
+      <li class="breadcrumb-item"><a href="/enrich/">Dashboard</a></li>
+      <li class="breadcrumb-item active">Conceitos Auxiliares</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <h5 class="mb-0">Conceitos Auxiliares</h5>
+    {% if pending_count %}
+    <span class="badge bg-warning text-dark" style="font-size:0.75rem;">{{ pending_count }} pendentes</span>
+    {% endif %}
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="d-flex gap-2 mb-3 flex-wrap">
+    <select name="status_filter" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+      <option value="all" {% if status_filter=='all' %}selected{% endif %}>Todos</option>
+      <option value="pending" {% if status_filter=='pending' %}selected{% endif %}>Pendentes</option>
+      <option value="validated" {% if status_filter=='validated' %}selected{% endif %}>Validados</option>
+    </select>
+    <select name="category_filter" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+      <option value="all" {% if category_filter=='all' %}selected{% endif %}>Todas categorias</option>
+      {% for cat in valid_categories %}
+      <option value="{{ cat }}" {% if category_filter==cat %}selected{% endif %}>{{ cat }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0" style="font-size:0.82rem;">
+        <thead class="table-light">
+          <tr>
+            <th>Nome</th>
+            <th>Categoria BFO</th>
+            <th>Label EN</th>
+            <th>Usado em</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr id="row-{{ loop.index }}">
+            <td class="font-monospace">{{ row.name }}</td>
+            <td>
+              {% if row.bfo_category %}
+              <span class="badge bg-secondary" style="font-size:0.7rem;">{{ row.bfo_category }}</span>
+              {% else %}
+              <span class="text-muted" style="font-size:0.75rem;">—</span>
+              {% endif %}
+            </td>
+            <td>{{ row.label_en or '—' }}</td>
+            <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                title="{{ (used_in.get(row.name) or []) | join(', ') }}">
+              {{ (used_in.get(row.name) or []) | join(', ') or '—' }}
+            </td>
+            <td>
+              {% if row.status == 'validated' %}
+              <span class="badge bg-success" style="font-size:0.7rem;">validado</span>
+              {% else %}
+              <span class="badge bg-warning text-dark" style="font-size:0.7rem;">pendente</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if request.state.user %}
+              <button class="btn btn-outline-primary btn-sm" style="font-size:0.72rem; padding:1px 6px;"
+                      onclick="toggleForm('form-{{ loop.index }}')">Editar</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% if request.state.user %}
+          <tr id="form-{{ loop.index }}" style="display:none; background:#f8fafc;">
+            <td colspan="6" class="p-3">
+              <form onsubmit="saveAux(event, '{{ row.name }}', {{ loop.index }})">
+                <div class="row g-2">
+                  <div class="col-md-3">
+                    <label class="form-label" style="font-size:0.78rem;">Categoria BFO</label>
+                    <select name="bfo_category" class="form-select form-select-sm"
+                            onchange="updateBreadcrumb(this, 'bc-{{ loop.index }}')">
+                      <option value="">— selecionar —</option>
+                      <optgroup label="IndependentContinuant › MaterialEntity">
+                        <option value="Object" {% if row.bfo_category=='Object' %}selected{% endif %}>Object</option>
+                        <option value="ObjectAggregate" {% if row.bfo_category=='ObjectAggregate' %}selected{% endif %}>ObjectAggregate</option>
+                        <option value="FiatObjectPart" {% if row.bfo_category=='FiatObjectPart' %}selected{% endif %}>FiatObjectPart</option>
+                      </optgroup>
+                      <optgroup label="SpecificallyDependentContinuant">
+                        <option value="Quality" {% if row.bfo_category=='Quality' %}selected{% endif %}>Quality</option>
+                        <option value="Role" {% if row.bfo_category=='Role' %}selected{% endif %}>Role</option>
+                        <option value="Disposition" {% if row.bfo_category=='Disposition' %}selected{% endif %}>Disposition</option>
+                      </optgroup>
+                      <optgroup label="GenericallyDependentContinuant">
+                        <option value="InformationContentEntity" {% if row.bfo_category=='InformationContentEntity' %}selected{% endif %}>InformationContentEntity</option>
+                        <option value="MeasurementICE" {% if row.bfo_category=='MeasurementICE' %}selected{% endif %}>MeasurementICE</option>
+                      </optgroup>
+                      <optgroup label="Occurrent">
+                        <option value="Process" {% if row.bfo_category=='Process' %}selected{% endif %}>Process</option>
+                      </optgroup>
+                    </select>
+                    <div id="bc-{{ loop.index }}" class="mt-1" style="font-size:0.68rem; color:#64748b;"></div>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label" style="font-size:0.78rem;">Label EN</label>
+                    <input name="label_en" class="form-control form-control-sm" value="{{ row.label_en or '' }}">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label" style="font-size:0.78rem;">Label PT</label>
+                    <input name="label_pt" class="form-control form-control-sm" value="{{ row.label_pt or '' }}">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label" style="font-size:0.78rem;">Definição EN</label>
+                    <textarea name="definition_en" class="form-control form-control-sm" rows="2">{{ row.definition_en or '' }}</textarea>
+                  </div>
+                  <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success btn-sm w-100" style="font-size:0.75rem;">Validar</button>
+                  </div>
+                </div>
+              </form>
+            </td>
+          </tr>
+          {% endif %}
+          {% else %}
+          <tr><td colspan="6" class="text-center text-muted py-3">Nenhum conceito auxiliar encontrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const BFO_BREADCRUMB = {
+  Object:                   "Entity › Continuant › IndependentContinuant › MaterialEntity › Object",
+  ObjectAggregate:          "Entity › Continuant › IndependentContinuant › MaterialEntity › ObjectAggregate",
+  FiatObjectPart:           "Entity › Continuant › IndependentContinuant › MaterialEntity › FiatObjectPart",
+  Quality:                  "Entity › Continuant › SpecificallyDependentContinuant › Quality",
+  Role:                     "Entity › Continuant › SpecificallyDependentContinuant › RealizableEntity › Role",
+  Disposition:              "Entity › Continuant › SpecificallyDependentContinuant › RealizableEntity › Disposition",
+  InformationContentEntity: "Entity › Continuant › GenericallyDependentContinuant › InformationContentEntity",
+  MeasurementICE:           "Entity › Continuant › GenericallyDependentContinuant › ICE › MeasurementICE",
+  Process:                  "Entity › Occurrent › Process",
+};
+
+function toggleForm(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+function updateBreadcrumb(sel, bcId) {
+  const bc = document.getElementById(bcId);
+  bc.textContent = BFO_BREADCRUMB[sel.value] || '';
+}
+
+async function saveAux(evt, name, idx) {
+  evt.preventDefault();
+  const form = evt.target;
+  const fd = new FormData(form);
+  const resp = await fetch(`/enrich/auxiliary/${encodeURIComponent(name)}`, {
+    method: 'POST', body: fd
+  });
+  if (resp.ok) {
+    window.location.reload();
+  } else {
+    const err = await resp.json().catch(() => ({}));
+    alert('Erro: ' + (err.detail || resp.status));
+  }
+}
+</script>
+{% endblock %}

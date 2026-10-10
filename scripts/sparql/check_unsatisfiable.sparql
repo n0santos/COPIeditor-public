@@ -1,0 +1,11 @@
+# Consistency check: no COPI class should be inferred as unsatisfiable (⊑ owl:Nothing)
+# Returns a row for each unsatisfiable class found.
+PREFIX copi: <https://www.inf.ufrgs.br/ontologies/copi/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+
+SELECT ?cls WHERE {
+  ?cls rdfs:subClassOf owl:Nothing .
+  FILTER(?cls != owl:Nothing)
+}
+ORDER BY ?cls

@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "axiomatizador-termos"
+version = "0.1.0"
+description = "LLM-assisted axiomatization of industrial equipment classes using BFO/IOF-Core"
+authors = ["Nicolau Santos"]
+readme = "README.md"
+packages = [{ include = "app" }, { include = "parsers" }, { include = "enrichment" }]
+
+[tool.poetry.dependencies]
+python = "^3.14"
+fastapi = ">=0.104.0"
+uvicorn = { extras = ["standard"], version = ">=0.24.0" }
+sqlalchemy = ">=2.0.0"
+# Jinja2 3.1.5+ has a cache-key bug with Python 3.14 (dict in tuple → unhashable)
+jinja2 = "==3.1.4"
+python-multipart = ">=0.0.6"
+rdflib = ">=7.0.0"
+sparqlwrapper = ">=2.0.0"
+pandas = ">=2.1.0"
+openpyxl = ">=3.1.2"
+lxml = ">=4.9.3"
+requests = ">=2.31.0"
+httpx = ">=0.27.0"
+pdfplumber = ">=0.11.0"
+rich = ">=13.7.0"
+typer = ">=0.9.0"
+language-tags = ">=1.2.0"
+owlready2 = "==0.50"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.0.0"
+pytest-asyncio = ">=0.23.0"
+httpx = ">=0.27.0"
+
+[tool.poetry.scripts]
+ingest = "scripts.ingest:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

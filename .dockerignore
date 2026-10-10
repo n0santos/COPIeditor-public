@@ -1,0 +1,18 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+.git
+.DS_Store
+# enrichment.db is user data (LLM proposals, expert reviews) — mounted as PVC at runtime
+data/enrichment.db
+# raw source files — large/proprietary sources excluded; small static ontologies kept
+data/raw/iso15926/
+data/raw/posc_caesar/
+data/raw/cfihos/
+data/raw/dexpi/
+data/raw/slb_glossary/
+data/raw/iso14224/
+data/raw/isa5_1/
+data/raw/onepetro_glossary/
+data/raw/ppdm/

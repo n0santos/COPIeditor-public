@@ -1,0 +1,106 @@
+{
+  "cluster_label": "wellbore",
+  "classification_basis": "functional",
+  "classification_basis_rationale": "Wellbore is defined by its function as a drilled pathway providing subsurface access, regardless of the specific drilling method or completion configuration used to create it.",
+  "step1_function": {
+    "function_name": "SubsurfaceAccessFunction",
+    "function_parent": "DesignedFunction",
+    "function_parent_enriched": false,
+    "function_nl_definition": "A DesignedFunction that is realized in a SubsurfaceAccessProcess and that consists in providing a drilled pathway from the surface to a subsurface terminating point, enabling access for resource extraction, injection, or monitoring operations.",
+    "process_name": "SubsurfaceAccessProcess",
+    "process_parent": "PlannedProcess",
+    "process_nl_definition": "A PlannedProcess in which a pathway is created through drilling from the surface to a subsurface location, establishing access for subsequent operations such as resource extraction, fluid injection, or subsurface monitoring.",
+    "rationale": "The identity-giving function is providing subsurface access through a drilled pathway. All sources emphasize the wellbore as 'the drilled hole' or 'path of drilled footage' that enables access to subsurface formations. This function is already enriched in the ontology and matches exactly."
+  },
+  "step2_genus": {
+    "genus_name": "Site",
+    "genus_bfo_root": "Site",
+    "genus_enriched": false,
+    "rationale": "Wellbore is fundamentally a spatial region - a drilled cavity or hole in the subsurface with engineered boundaries. It is not a material artifact but rather an immaterial spatial region defined by the drilled pathway. This aligns with BFO Site (BFO_0000029) as a spatial region with engineered boundaries. The parent candidate 'Well' from PPDM represents the broader system, but wellbore itself is the spatial cavity within that system."
+  },
+  "step3_differentia": {
+    "differentia_expression": "∃hasFunction.SubsurfaceAccessFunction",
+    "differentia_nl": "A Site that provides engineered subsurface access through drilling operations.",
+    "genus_already_provides": [
+      "∃locatedIn.SpatialRegion"
+    ],
+    "distinguishes_from": {
+      "Pipeline": "Pipeline is a material transport system, not a spatial cavity",
+      "Cavity": "Natural cavity lacks the engineered drilling origin and access function",
+      "Tunnel": "Tunnel provides horizontal passage, wellbore provides vertical/directional subsurface access"
+    },
+    "rationale": "The differentia is the SubsurfaceAccessFunction realized through drilling. This distinguishes wellbore from other spatial regions by its engineered origin and specific access purpose."
+  },
+  "step4_parts": {
+    "parts": [],
+    "rationale": "As a Site (spatial region), wellbore does not have material component parts in the traditional sense. The wellbore is the cavity itself, while any physical structures (casing, liner, etc.) that may be installed are separate artifacts that occupy or line the wellbore space, not parts of the spatial region itself."
+  },
+  "step5_signature": {
+    "inputs": [
+      {
+        "type": "MechanicalPower",
+        "count": 1,
+        "constraints": "drilling energy applied through drill string"
+      },
+      {
+        "type": "FluidPortion",
+        "count": 1,
+        "constraints": "drilling fluid for circulation and cuttings removal"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "SpatialRegion",
+        "count": 1,
+        "constraints": "drilled pathway from surface to subsurface terminating point"
+      },
+      {
+        "type": "SolidPortion",
+        "count": 1,
+        "constraints": "rock cuttings and debris removed during drilling"
+      }
+    ],
+    "transformation": "mechanical drilling energy applied to create a spatial pathway through subsurface formations, enabling access for resource operations",
+    "transformation_kind": "subsurface_access",
+    "transformation_kind_status": "controlled",
+    "proposed_kind_rationale": null,
+    "new_participant_type_definitions": [
+      {
+        "type": "SpatialRegion",
+        "type_bfo_parent": "bfo:ImmaterialEntity",
+        "type_nl_definition": "An immaterial entity that is a three-dimensional spatial extent with defined boundaries."
+      }
+    ],
+    "rationale": "The signature reflects the drilling process that creates the wellbore: mechanical energy and drilling fluid inputs transform subsurface rock into a spatial pathway and removed cuttings. The transformation_kind 'subsurface_access' matches the canonical vocabulary."
+  },
+  "axiom_mode": "equivalent",
+  "primitive_rationale": null,
+  "disjoint_with": [],
+  "disjointness_rationale": "No disjointness assertions made. As a Site concept, wellbore could potentially coexist spatially with other spatial regions or be part of larger spatial systems without logical contradiction.",
+  "definitions": {
+    "nl_definition_en": "A Site that bears a SubsurfaceAccessFunction and that consists in a drilled pathway from the surface to a subsurface terminating point, providing engineered access for resource extraction, injection, or monitoring operations.",
+    "nl_definition_pt": "Um Site que possui uma SubsurfaceAccessFunction e que consiste em um caminho perfurado da superfície até um ponto de terminação subsuperficial, fornecendo acesso projetado para extração de recursos, injeção ou operações de monitoramento.",
+    "semiformal_axiom": "Every wellbore is a Site that bears a SubsurfaceAccessFunction",
+    "fol_axiom": "∀x(Wellbore(x) ↔ Site(x) ∧ ∃f(SubsurfaceAccessFunction(f) ∧ bearerOf(x,f)))"
+  },
+  "divergence_flags": [
+    {
+      "type": "T2_granularity",
+      "evidence": "SLB and OnePetro provide minimal definitions focusing only on 'drilled hole', while PPDM provides extensive detail about wellbore paths, sidetracks, deepening operations, and relationship to Well Origin",
+      "sources_involved": [
+        "slb_glossary",
+        "onepetro_glossary",
+        "ppdm"
+      ]
+    }
+  ],
+  "cross_standard_notes": "PPDM provides the most comprehensive definition with detailed clarifications about wellbore paths, sidetracks, and operational considerations, while SLB and OnePetro offer simpler definitions focused on the basic concept of a drilled hole.",
+  "confidence": {
+    "step1": "high",
+    "step2": "high",
+    "step3": "high",
+    "step4": "high",
+    "step5": "medium",
+    "overall": "high"
+  }
+}

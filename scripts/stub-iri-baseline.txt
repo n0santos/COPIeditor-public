@@ -1,0 +1,15 @@
+# Grandfathered readable-name class IRIs — ODR-022 consolidation backlog.
+#
+# Every name here is a class published without a numeric COPI_* IRI. The
+# verify_owl.sh numeric-IRI gate fails on any readable-name class NOT in this
+# list, so the count can only go down. Delete names as ODR-022 lands; when this
+# file is empty the gate enforces zero and the ratchet is complete.
+#
+# Do not add names to this file. A new name here means a stub shipped.
+#
+# 2026-08-07 — ODR-022 executed: 427 -> 15 -> 14 (Shell repointed to VesselShell, §O5) -> 13 (CableBundle has no source
+# definition, so it cannot be enriched and takes a numeric IRI as vocabulary instead).
+# The 15 that remain are standard-term components that must enter through the
+# 5-step enrichment pipeline rather than by IRI allocation (ODR-022 §O6 / §10.2).
+# They are blocked from allocation in regen_enriched_owl.PIPELINE_REQUIRED.
+# Each leaves this file when its enrichment entry exists and exports.

@@ -1,0 +1,1116 @@
+{% extends "base.html" %}
+{% block title %}Ontology Consequences — COPI Editor{% endblock %}
+
+{% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --accent:  #1e3a5f;
+  --accent2: #2563eb;
+  --border:  #dee2e6;
+  --muted:   #6c757d;
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+body { font-family: var(--font-sans); background: #f1f5f9; }
+
+/* ── Top bar ── */
+.cons-header {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  white-space: nowrap;
+}
+.stat-pill.ok   { background: rgba(34,197,94,0.2);  border-color: rgba(34,197,94,0.4); }
+.stat-pill.warn { background: rgba(239,68,68,0.2);  border-color: rgba(239,68,68,0.4); }
+
+/* ── Tab bar ── */
+.validate-tabs {
+  background: white;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  padding: 0 1rem;
+  gap: 0.25rem;
+}
+.validate-tab {
+  padding: 0.6rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0;
+  transition: color 0.15s, background 0.15s;
+  user-select: none;
+}
+.validate-tab:hover { color: var(--accent2); background: #f8fafc; }
+.validate-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent2);
+  font-weight: 600;
+  background: #f0f5ff;
+}
+
+/* ── Tab panels ── */
+.tab-panel { display: none; }
+.tab-panel.active { display: flex; flex-direction: column; }
+
+/* ── Persistent three-column body (sidebar + tab area + detail) ── */
+/* navbar ~56px + header ~56px + tabbar ~42px */
+.cons-body {
+  display: flex;
+  flex-direction: row;
+  height: calc(100vh - 154px);
+  width: 100%;
+  overflow: hidden;
+}
+.tab-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tab-panel.active { flex: 1; }
+
+/* Sidebar */
+.cons-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: white;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-hd {
+  padding: 0.55rem 0.75rem 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.sidebar-search { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
+.sidebar-search input {
+  width: 100%;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 0.78rem;
+  font-family: var(--font-sans);
+  background: #f8fafc;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sidebar-search input:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.08);
+  background: white;
+}
+.sidebar-list { overflow-y: auto; flex: 1; }
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  border-bottom: 1px solid #f1f5f9;
+  border-left: 3px solid transparent;
+  transition: background 0.12s, border-color 0.12s;
+  user-select: none;
+}
+.sidebar-item:hover  { background: #f8fafc; border-left-color: #e2e8f0; }
+.sidebar-item.active {
+  background: #eff6ff;
+  border-left-color: var(--accent2);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.mode-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-equivalent { background: #16a34a; }
+.dot-necessary  { background: #2563eb; }
+.dot-bfo        { background: #1e3a5f; }
+.dot-function   { background: #9333ea; }
+
+/* Graph canvas */
+#cy-container {
+  flex: 1; position: relative;
+  background-color: #f1f5f9;
+  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+#cy { width: 100%; height: 100%; }
+.cy-controls {
+  position: absolute; top: 10px; right: 10px;
+  display: flex; flex-direction: column; gap: 4px; z-index: 10;
+}
+.cy-btn {
+  background: rgba(255,255,255,0.92); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.3rem 0.65rem;
+  font-size: 0.72rem; font-family: var(--font-sans); cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  backdrop-filter: blur(4px);
+}
+.cy-btn:hover { background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+.filter-bar {
+  position: absolute; top: 10px; left: 10px;
+  display: flex; gap: 4px; z-index: 10; flex-wrap: wrap;
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.9);
+  border-radius: 10px;
+  padding: 5px 7px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.filter-toggle {
+  background: transparent; border: 1px solid #cbd5e1;
+  border-radius: 20px; padding: 0.18rem 0.6rem;
+  font-size: 0.7rem; font-family: var(--font-sans); cursor: pointer;
+  user-select: none; transition: background 0.15s, color 0.15s, border-color 0.15s;
+  color: #64748b;
+}
+.filter-toggle.active { background: #1e3a5f; color: white; border-color: #1e3a5f; }
+.filter-toggle:not(.active):hover { background: #f1f5f9; border-color: #94a3b8; color: #374151; }
+.filter-preset {
+  background: #f1f5f9; border: 1px solid #cbd5e1;
+  border-radius: 20px; padding: 0.18rem 0.6rem;
+  font-size: 0.7rem; font-family: var(--font-sans); cursor: pointer;
+  user-select: none; transition: background 0.15s;
+  font-weight: 600; color: #475569;
+}
+.filter-preset:hover { background: #e2e8f0; }
+/* divider within filter-bar */
+.filter-sep { width: 1px; background: #cbd5e1; margin: 2px 2px; align-self: stretch; display: inline-block; }
+
+/* Detail panel */
+.cons-detail {
+  width: 260px; flex-shrink: 0;
+  background: white; border-left: 1px solid var(--border);
+  overflow-y: auto; padding: 0; font-size: 0.83rem;
+  display: flex; flex-direction: column;
+}
+.detail-panel-hd {
+  padding: 0.55rem 1rem 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.detail-panel-body { padding: 0.9rem 1rem; flex: 1; }
+.cons-detail h3 { font-size: 0.9rem; font-weight: 700; margin: 0 0 0.2rem; color: #1e3a5f; font-family: var(--font-sans); }
+.detail-empty {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  text-align: center;
+  margin-top: 3rem;
+  padding: 0 1.5rem;
+  line-height: 1.6;
+}
+.detail-empty svg { display: block; margin: 0 auto 0.75rem; opacity: 0.35; }
+.detail-section-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 0.3rem;
+  margin-top: 0;
+}
+.infer-chain { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.3rem; }
+.type-chip {
+  display: inline-block; padding: 0.12rem 0.5rem;
+  border-radius: 4px; font-size: 0.7rem; font-family: var(--font-mono);
+  letter-spacing: 0;
+}
+.chip-asserted  { background: #dbeafe; color: #1e40af; }
+.chip-inferred  { background: #dcfce7; color: #166534; border: 1px dashed #16a34a; }
+.chip-bfo       { background: #f1f5f9; color: #475569; }
+.violation-block {
+  margin-top: 0.75rem; padding: 0.55rem 0.75rem;
+  background: #fef2f2; border-left: 3px solid #ef4444;
+  border-radius: 0 6px 6px 0; font-size: 0.78rem; color: #991b1b;
+}
+
+/* Legend */
+.legend {
+  position: absolute; bottom: 10px; right: 10px;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(255,255,255,0.95);
+  border-radius: 8px; padding: 0.65rem 0.9rem;
+  font-size: 0.68rem; z-index: 10;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  backdrop-filter: blur(6px);
+  font-family: var(--font-sans);
+}
+.legend-title {
+  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #94a3b8; margin-bottom: 0.4rem;
+}
+.legend-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; color: #374151; }
+.legend-row:last-child { margin-bottom: 0; }
+.legend-line { width: 24px; height: 2px; display: inline-block; flex-shrink: 0; }
+
+/* Loading overlay */
+#loading-overlay {
+  position: absolute; inset: 0;
+  background: rgba(248,250,252,0.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 20; font-size: 0.9rem; color: var(--muted); gap: 0.75rem;
+}
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid #e2e8f0; border-top-color: #2563eb;
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Full-bleed layout */
+.page-content { padding-top: 0 !important; padding-bottom: 0 !important; }
+.container.page-content { max-width: 100vw !important; padding-left: 0 !important; padding-right: 0 !important; }
+
+/* ── Chowlk panel ── */
+#panel-chowlk {
+  overflow: hidden;
+}
+#chowlk-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: white;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  min-height: 42px;
+}
+#chowlk-ns-legend {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+.ns-swatch {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+}
+.ns-box {
+  width: 14px; height: 14px; border-radius: 2px; border: 1.5px solid;
+  display: inline-block; flex-shrink: 0;
+}
+.ns-box-copi { background: #ffffff; border-color: #334155; }
+.ns-box-iof  { background: #e0e7ef; border-color: #1e3a5f; }
+#chowlk-class-label {
+  font-weight: 700;
+  color: #1e3a5f;
+  font-size: 0.9rem;
+  font-family: var(--font-mono);
+}
+.chowlk-mode-badge {
+  font-size: 0.68rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+.chowlk-badge-equiv  { background: #dcfce7; color: #166534; }
+.chowlk-badge-nec    { background: #dbeafe; color: #1e40af; }
+.chowlk-badge-mixed  { background: #fef9c3; color: #92400e; }
+#chowlk-empty {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 0.78rem;
+}
+#chowlk-export-btn {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.22rem 0.65rem;
+  font-size: 0.72rem;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  color: #475569;
+}
+#chowlk-export-btn:hover { background: #f8fafc; color: #1e3a5f; }
+#cy-chowlk {
+  width: 100%;
+  flex: 1;
+  background-color: #f1f5f9;
+  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
+  background-size: 22px 22px;
+  min-height: 0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="cons-header">
+  <div>
+    <span style="font-weight:600;font-size:0.95rem;">Ontology Consequences</span>
+    <span style="font-size:0.78rem;color:rgba(255,255,255,0.55);margin-left:0.75rem;">validated classes · individual inferences · disjointness</span>
+  </div>
+  <div id="stats-bar" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+    <span class="stat-pill" id="stat-total">— classes</span>
+    <span class="stat-pill" id="stat-equiv">— equivalent</span>
+    <span class="stat-pill" id="stat-nec">— necessary</span>
+    <span class="stat-pill" id="stat-consistent">—</span>
+  </div>
+  <span class="stat-pill" id="stat-reasoner" style="font-family:monospace;font-size:0.7rem;color:rgba(255,255,255,0.5);">—</span>
+  <button class="stat-pill" onclick="reloadGraph()" style="cursor:pointer;border:none;background:rgba(255,255,255,0.12);">↻ Reload</button>
+</div>
+
+<!-- Tab bar -->
+<div class="validate-tabs">
+  <div class="validate-tab active" data-tab="graph"   onclick="switchTab('graph')">Graph</div>
+  <div class="validate-tab"        data-tab="chowlk" onclick="switchTab('chowlk')">Chowlk</div>
+</div>
+
+<div class="cons-body">
+
+  <!-- Left: class list (always visible) -->
+  <div class="cons-sidebar">
+    <div class="sidebar-hd">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="3.5" height="3.5" rx="0.5" fill="#94a3b8"/>
+        <rect x="5.5" y="1" width="3.5" height="3.5" rx="0.5" fill="#94a3b8"/>
+        <rect x="1" y="5.5" width="3.5" height="3.5" rx="0.5" fill="#94a3b8"/>
+        <rect x="5.5" y="5.5" width="3.5" height="3.5" rx="0.5" fill="#94a3b8"/>
+      </svg>
+      Validated Classes
+    </div>
+    <div class="sidebar-search">
+      <input type="text" id="sidebar-search" placeholder="Filter…" oninput="filterSidebar()">
+    </div>
+    <div class="sidebar-list" id="sidebar-list"></div>
+  </div>
+
+  <!-- Centre: tab panels -->
+  <div class="tab-area">
+
+    <!-- ══ GRAPH TAB ══ -->
+    <div class="tab-panel active" id="panel-graph">
+      <div id="cy-container">
+        <div id="loading-overlay">
+          <div class="spinner"></div>
+          <span>Building consequence graph…</span>
+        </div>
+        <div id="cy"></div>
+
+        <div class="filter-bar">
+          <span class="filter-preset" onclick="setPreset('hierarchy')" title="Classes + genus only">Hierarchy</span>
+          <span class="filter-preset" onclick="setPreset('functions')" title="Add function nodes">+Functions</span>
+          <span class="filter-preset" onclick="setPreset('full')"      title="Show all node types">Full</span>
+          <span class="filter-sep"></span>
+          <span class="filter-toggle active" data-type="enriched"   onclick="toggleFilter(this)">Classes</span>
+          <span class="filter-toggle active" data-type="genus"      onclick="toggleFilter(this)">Genus</span>
+          <span class="filter-toggle active" data-type="bfo_root"   onclick="toggleFilter(this)">BFO roots</span>
+          <span class="filter-toggle"        data-type="function"   onclick="toggleFilter(this)">Functions</span>
+          <span class="filter-toggle"        data-type="part"       onclick="toggleFilter(this)">Parts</span>
+          <span class="filter-toggle"        data-type="process"    onclick="toggleFilter(this)">Processes</span>
+          <span class="filter-toggle"        data-type="proposed"   onclick="toggleFilter(this)">Proposed</span>
+        </div>
+
+        <div class="cy-controls">
+          <button class="cy-btn" onclick="cy.fit()">⊡ Fit</button>
+          <button class="cy-btn" onclick="cy.zoom(cy.zoom()*1.25)">+</button>
+          <button class="cy-btn" onclick="cy.zoom(cy.zoom()*0.8)">−</button>
+          <button class="cy-btn" onclick="relayout()">⟳ Layout</button>
+        </div>
+
+        <div class="legend">
+          <div class="legend-title">Legend</div>
+          <div class="legend-row"><span class="mode-dot dot-bfo"></span> BFO/IOF-Core root</div>
+          <div class="legend-row"><span class="mode-dot dot-equivalent"></span> Equivalent (≡)</div>
+          <div class="legend-row"><span class="mode-dot dot-necessary"></span> Necessary (⊑)</div>
+          <div class="legend-row"><span class="mode-dot" style="background:#dcfce7;border:2px dashed #16a34a;box-sizing:border-box;"></span> Proposed</div>
+          <div class="legend-row"><span class="mode-dot" style="background:#94a3b8;"></span> Intermediate genus</div>
+          <div class="legend-row"><span class="mode-dot dot-function"></span> Function</div>
+          <div class="legend-row">
+            <span class="legend-line" style="background:#475569;"></span> subClassOf
+          </div>
+          <div class="legend-row">
+            <span class="legend-line" style="border-top:2px dashed #16a34a;height:0;"></span> equivalentClass
+          </div>
+          <div class="legend-row">
+            <span class="legend-line" style="border-top:2px dashed #ef4444;height:0;"></span> disjointWith
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CHOWLK TAB ══ -->
+    <div class="tab-panel" id="panel-chowlk">
+      <div id="chowlk-header">
+        <span id="chowlk-class-label">—</span>
+        <span id="chowlk-mode-badge" class="chowlk-mode-badge" style="display:none;"></span>
+        <span id="chowlk-empty">Select a class to view its Chowlk diagram.</span>
+        <div id="chowlk-ns-legend">
+          <span class="ns-swatch"><span class="ns-box ns-box-copi"></span> copi:</span>
+          <span class="ns-swatch"><span class="ns-box ns-box-iof"></span>  iof:</span>
+          <button id="chowlk-export-btn" style="display:none;">⬇ PNG</button>
+        </div>
+      </div>
+      <div id="cy-chowlk"></div>
+    </div>
+
+  </div>
+
+  <!-- Right: detail panel (always visible) -->
+  <div class="cons-detail" id="detail-panel">
+    <div class="detail-panel-hd">Class Inspector</div>
+    <div class="detail-panel-body" id="detail-panel-body">
+      <div class="detail-empty">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+        </svg>
+        Click a class to inspect its individual consequences and inferred types.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+<script>
+cytoscape.use(cytoscapeDagre);
+
+// ══════════════════════════════════════════════════════════
+// GRAPH
+// ══════════════════════════════════════════════════════════
+let cy = null;
+let graphData = null;
+let currentTab = 'graph';
+let currentChowlkEnrichmentId = null;
+let currentChowlkLabel = '';
+let individualMap = {};
+let activeFilters = new Set(['enriched','genus','bfo_root']);
+
+const NODE_COLORS = {
+  bfo_root:            { bg: '#1e3a5f', border: '#0f172a', text: '#fff' },
+  enriched_equivalent: { bg: '#16a34a', border: '#14532d', text: '#fff' },
+  enriched_necessary:  { bg: '#2563eb', border: '#1e40af', text: '#fff' },
+  proposed_equivalent: { bg: '#dcfce7', border: '#16a34a', text: '#14532d' },
+  proposed_necessary:  { bg: '#dbeafe', border: '#2563eb', text: '#1e40af' },
+  genus:               { bg: '#94a3b8', border: '#64748b', text: '#fff' },
+  function:            { bg: '#9333ea', border: '#6b21a8', text: '#fff' },
+  process:             { bg: '#c026d3', border: '#86198f', text: '#fff' },
+  part:                { bg: '#ea580c', border: '#9a3412', text: '#fff' },
+};
+
+function nodeStyle(node) {
+  const t = node.node_type;
+  if (t === 'enriched')
+    return node.axiom_mode === 'equivalent'
+      ? NODE_COLORS.enriched_equivalent : NODE_COLORS.enriched_necessary;
+  if (t === 'proposed')
+    return node.axiom_mode === 'equivalent'
+      ? NODE_COLORS.proposed_equivalent : NODE_COLORS.proposed_necessary;
+  return NODE_COLORS[t] || { bg: '#e2e8f0', border: '#94a3b8', text: '#1a1a1a' };
+}
+
+const EDGE_STYLES = {
+  subClassOf:      { color: '#475569', style: 'solid',  width: 1.5, arrow: 'triangle' },
+  equivalentClass: { color: '#16a34a', style: 'dashed', width: 2,   arrow: 'triangle' },
+  disjointWith:    { color: '#ef4444', style: 'dashed', width: 1.5, arrow: 'tee' },
+  hasFunction:     { color: '#9333ea', style: 'dotted', width: 1.5, arrow: 'triangle' },
+  hasPart:         { color: '#ea580c', style: 'dotted', width: 1,   arrow: 'triangle' },
+  realizedIn:      { color: '#c026d3', style: 'dotted', width: 1,   arrow: 'triangle' },
+};
+
+function buildElements(data) {
+  const nodeMap = Object.fromEntries(data.nodes.map(n => [n.id, n]));
+
+  // Pass 1: non-bfo_root nodes that pass the filter
+  const elems = [];
+  const nodeIds = new Set();
+  for (const n of data.nodes) {
+    if (n.node_type === 'bfo_root') continue;
+    if (!activeFilters.has(n.node_type)) continue;
+    const s = nodeStyle(n);
+    elems.push({ group: 'nodes', data: {
+      id: n.id, label: n.label, node_type: n.node_type,
+      status: n.status || 'validated',
+      axiom_mode: n.axiom_mode || '', enrichment_id: n.enrichment_id || null,
+      bg: s.bg, border: s.border, textColor: s.text
+    }});
+    nodeIds.add(n.id);
+  }
+
+  // Pass 2: bfo_root nodes only if connected to a visible node
+  if (activeFilters.has('bfo_root')) {
+    const connectedRoots = new Set();
+    for (const e of data.edges) {
+      if (e.edge_type === 'hasPart'    && !activeFilters.has('part'))    continue;
+      if (e.edge_type === 'realizedIn' && !activeFilters.has('process')) continue;
+      const src = nodeMap[e.source], tgt = nodeMap[e.target];
+      if (nodeIds.has(e.source) && tgt && tgt.node_type === 'bfo_root') connectedRoots.add(e.target);
+      if (nodeIds.has(e.target) && src && src.node_type === 'bfo_root') connectedRoots.add(e.source);
+    }
+    for (const rootId of connectedRoots) {
+      const n = nodeMap[rootId];
+      const s = nodeStyle(n);
+      elems.push({ group: 'nodes', data: {
+        id: n.id, label: n.label, node_type: n.node_type,
+        axiom_mode: '', bg: s.bg, border: s.border, textColor: s.text
+      }});
+      nodeIds.add(rootId);
+    }
+  }
+
+  // Pass 3: edges between visible nodes
+  for (const e of data.edges) {
+    if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+    if (e.edge_type === 'hasPart'    && !activeFilters.has('part'))    continue;
+    if (e.edge_type === 'realizedIn' && !activeFilters.has('process')) continue;
+    const es = EDGE_STYLES[e.edge_type] || EDGE_STYLES.subClassOf;
+    elems.push({ group: 'edges', data: {
+      id: `${e.source}-${e.edge_type}-${e.target}`,
+      source: e.source, target: e.target, edge_type: e.edge_type,
+      color: es.color, lineStyle: es.style, width: es.width, arrowShape: es.arrow,
+    }});
+  }
+  return elems;
+}
+
+async function loadGraph() {
+  document.getElementById('loading-overlay').style.display = 'flex';
+  const resp = await fetch('/enrich/api/consequences');
+  if (!resp.ok) {
+    document.getElementById('loading-overlay').innerHTML =
+      '<span style="color:#ef4444">Error loading graph: ' + resp.status + '</span>';
+    return;
+  }
+  graphData = await resp.json();
+  individualMap = {};
+  for (const ind of (graphData.individuals || [])) individualMap[ind.class] = ind;
+  updateStats(graphData.stats);
+  buildSidebar(graphData.nodes);
+  renderGraph();
+}
+
+function reloadGraph() { loadGraph(); }
+
+function renderGraph() {
+  const elems = buildElements(graphData);
+  if (cy) cy.destroy();
+  cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements: elems,
+    style: [
+      { selector: 'node', style: {
+          'background-color': 'data(bg)', 'border-color': 'data(border)', 'border-width': 2,
+          'label': 'data(label)', 'color': 'data(textColor)', 'font-size': 11,
+          'font-family': 'DM Sans, system-ui, sans-serif',
+          'text-valign': 'center', 'text-halign': 'center',
+          'text-wrap': 'wrap', 'text-max-width': 130,
+          'width': 'label', 'height': 'label', 'padding': 8,
+          'shape': 'roundrectangle', 'min-zoomed-font-size': 7,
+      }},
+      { selector: 'node[node_type = "bfo_root"]', style: { shape: 'hexagon', 'font-weight': 'bold', 'font-size': 12 }},
+      { selector: 'node[node_type = "function"]', style: { shape: 'ellipse', 'font-size': 10 }},
+      { selector: 'node[node_type = "part"]',     style: { shape: 'diamond', 'font-size': 10 }},
+      { selector: 'node[node_type = "proposed"]', style: { 'border-style': 'dashed', 'background-opacity': 0.75, 'font-style': 'italic' }},
+      { selector: 'node:selected', style: { 'border-width': 3, 'border-color': '#f59e0b', 'overlay-opacity': 0.08 }},
+      { selector: 'edge', style: {
+          'line-color': 'data(color)', 'target-arrow-color': 'data(color)',
+          'target-arrow-shape': 'data(arrowShape)', 'line-style': 'data(lineStyle)',
+          'width': 'data(width)', 'curve-style': 'bezier', 'arrow-scale': 0.9,
+      }},
+    ],
+    layout: { name: 'dagre', rankDir: 'BT', nodeSep: 60, rankSep: 80, edgeSep: 10, animate: false },
+    wheelSensitivity: 0.3,
+  });
+  cy.on('tap', 'node', evt => {
+    const node = evt.target;
+    const nt = node.data('node_type');
+    if (nt === 'enriched' || nt === 'proposed') {
+      selectClass(node.data('id'));
+      highlightInSidebar(node.data('id'));
+      currentChowlkEnrichmentId = node.data('enrichment_id') || null;
+      currentChowlkLabel = node.data('label') || '';
+      if (currentTab === 'chowlk' && currentChowlkEnrichmentId) {
+        loadChowlk(currentChowlkEnrichmentId, currentChowlkLabel, node.data('axiom_mode'));
+      }
+      cy.animate({ fit: { eles: node.neighborhood().add(node), padding: 80 } }, { duration: 350 });
+    }
+  });
+  cy.on('tap', evt => { if (evt.target === cy) clearDetail(); });
+  document.getElementById('loading-overlay').style.display = 'none';
+}
+
+function relayout() {
+  if (!cy) return;
+  cy.layout({ name: 'dagre', rankDir: 'BT', nodeSep: 60, rankSep: 80, animate: true, animationDuration: 400 }).run();
+}
+
+function updateStats(stats) {
+  if (!stats) return;
+  document.getElementById('stat-total').textContent = stats.total_classes + ' classes';
+  document.getElementById('stat-equiv').textContent = stats.equivalent_classes + ' equivalent';
+  document.getElementById('stat-nec').textContent   = stats.necessary_classes  + ' necessary';
+  if (stats.reasoner) document.getElementById('stat-reasoner').textContent = stats.reasoner;
+  const pill = document.getElementById('stat-consistent');
+  if (stats.consistent) {
+    pill.textContent = '✓ Consistent'; pill.classList.add('ok');
+  } else {
+    pill.textContent = '⚠ ' + stats.violation_count + ' violation(s)'; pill.classList.add('warn');
+  }
+}
+
+function buildSidebar(nodes) {
+  const list = document.getElementById('sidebar-list');
+  list.innerHTML = '';
+  const sorted = nodes
+    .filter(n => n.node_type === 'enriched' || n.node_type === 'proposed')
+    .sort((a,b) => a.label.localeCompare(b.label));
+  for (const n of sorted) {
+    const ind = individualMap[n.id];
+    const hasViol = ind && ind.violations && ind.violations.length > 0;
+    const isProposed = n.node_type === 'proposed';
+    const dotClass = isProposed
+      ? (n.axiom_mode === 'equivalent' ? 'dot-equivalent' : 'dot-necessary')
+      : (n.axiom_mode === 'equivalent' ? 'dot-equivalent' : 'dot-necessary');
+    const item = document.createElement('div');
+    item.className = isProposed ? 'sidebar-item sidebar-item-proposed' : 'sidebar-item';
+    item.dataset.cls = n.id;
+    item.dataset.label = n.label.toLowerCase();
+    if (isProposed) item.style.display = activeFilters.has('proposed') ? '' : 'none';
+    item.innerHTML = `
+      <span class="mode-dot ${dotClass}" style="${isProposed ? 'border:2px dashed currentColor;background:transparent;opacity:0.7;' : ''}"></span>
+      <span style="flex:1;${isProposed ? 'opacity:0.7;font-style:italic;' : ''}">${n.label}</span>
+      ${hasViol ? '<span style="color:#ef4444;font-size:0.9em;">⚠</span>' : ''}
+      ${isProposed ? '<span style="color:#92400e;font-size:0.7em;">⏳</span>' : ''}
+    `;
+    item.onclick = () => {
+      selectClass(n.id);
+      currentChowlkEnrichmentId = n.enrichment_id || null;
+      currentChowlkLabel = n.label || '';
+      if (cy) {
+        const cyNode = cy.$(`#${CSS.escape(n.id)}`);
+        if (cyNode.length) {
+          cy.animate({ fit: { eles: cyNode.neighborhood().add(cyNode), padding: 80 } }, { duration: 350 });
+          cyNode.select();
+        }
+      }
+      if (currentTab === 'chowlk' && currentChowlkEnrichmentId) {
+        loadChowlk(currentChowlkEnrichmentId, currentChowlkLabel, n.axiom_mode);
+      }
+    };
+    list.appendChild(item);
+  }
+}
+
+function syncProposedSidebar() {
+  const show = activeFilters.has('proposed');
+  document.querySelectorAll('.sidebar-item-proposed').forEach(el => {
+    el.style.display = show ? '' : 'none';
+  });
+}
+
+function filterSidebar() {
+  const q = document.getElementById('sidebar-search').value.toLowerCase();
+  document.querySelectorAll('.sidebar-item').forEach(item =>
+    item.style.display = item.dataset.label.includes(q) ? '' : 'none');
+}
+
+function highlightInSidebar(clsId) {
+  document.querySelectorAll('.sidebar-item').forEach(item =>
+    item.classList.toggle('active', item.dataset.cls === clsId));
+}
+
+function selectClass(clsId) {
+  const ind = individualMap[clsId];
+  if (!ind) return;
+  const body = document.getElementById('detail-panel-body');
+  const isProposed = ind.status === 'proposed';
+
+  const modeLabel = isProposed
+    ? '<span style="color:#92400e;font-weight:600;">⏳ proposed</span>'
+    : ind.axiom_mode === 'equivalent'
+      ? '<span style="color:#16a34a;font-weight:600;">≡ defined</span>'
+      : '<span style="color:#2563eb;font-weight:600;">⊑ primitive</span>';
+
+  const defHtml = (ind.definition_en || ind.definition_pt) ? `
+    <div style="margin-bottom:0.85rem;padding:0.55rem 0.75rem;background:#f8fafc;border-left:3px solid #2563eb;border-radius:0 5px 5px 0;">
+      <div class="detail-section-label" style="margin-bottom:0.3rem;">Definition</div>
+      <div class="t-en" style="font-size:0.8rem;color:#1e293b;line-height:1.5;">${ind.definition_en || ''}</div>
+      <div class="t-pt" style="font-size:0.8rem;color:#1e293b;line-height:1.5;display:none;">${ind.definition_pt || ''}</div>
+    </div>` : '';
+
+  const docLink = ind.enrichment_id ? `
+    <a href="/enrich/${ind.enrichment_id}/doc" target="_blank"
+       style="display:inline-flex;align-items:center;gap:0.3rem;margin-bottom:0.85rem;font-size:0.75rem;
+              color:#2563eb;text-decoration:none;border:1px solid #bfdbfe;border-radius:5px;
+              padding:0.22rem 0.65rem;background:#f0f5ff;">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      ${isProposed ? 'Review in workbench' : 'Full documentation'}
+    </a>` : '';
+
+  // Function & process section — shows ontology annotations
+  let funcHtml = '';
+  if (ind.function_name || ind.process_name) {
+    let sig = {};
+    try { sig = JSON.parse(ind.process_signature || '{}'); } catch(e) {}
+    const inputs  = (sig.inputs  || []).map(i => typeof i === 'object' ? (i.role || i.class || JSON.stringify(i)) : i);
+    const outputs = (sig.outputs || []).map(o => typeof o === 'object' ? (o.role || o.class || JSON.stringify(o)) : o);
+    const transf  = sig.transformation || '';
+    funcHtml = `
+    <div style="margin-bottom:0.75rem;">
+      <div class="detail-section-label">Identity function</div>
+      <div style="font-size:0.8rem;line-height:1.7;">
+        ${ind.function_name ? `<div>
+          <span style="color:#9333ea;">⬡</span>
+          <strong>${ind.function_name}</strong>
+          <span style="color:#94a3b8;font-size:0.72rem;"> ⊑ ${ind.function_parent || 'DesignedFunction'}</span>
+        </div>` : ''}
+        ${ind.function_rationale ? `<div style="color:#64748b;font-size:0.73rem;margin:0.2rem 0 0.4rem 1.1rem;line-height:1.5;">${ind.function_rationale}</div>` : ''}
+        ${ind.process_name ? `<div>
+          <span style="color:#c026d3;">◇</span>
+          <strong>${ind.process_name}</strong>
+          <span style="color:#94a3b8;font-size:0.72rem;"> ⊑ ${ind.process_parent || 'PlannedProcess'}</span>
+        </div>` : ''}
+        ${inputs.length  ? `<div style="margin-top:0.3rem;color:#64748b;font-size:0.73rem;">inputs: ${inputs.join(', ')}</div>` : ''}
+        ${outputs.length ? `<div style="color:#64748b;font-size:0.73rem;">outputs: ${outputs.join(', ')}</div>` : ''}
+        ${transf ? `<div style="color:#64748b;font-size:0.73rem;">transformation: ${transf}</div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  // Differentia (natural language, from Step 3)
+  const differentiaHtml = ind.differentia_nl ? `
+    <div style="margin-bottom:0.75rem;padding:0.45rem 0.7rem;background:#faf5ff;border-left:3px solid #9333ea;border-radius:0 4px 4px 0;">
+      <div class="detail-section-label" style="margin-bottom:0.2rem;">Differentia</div>
+      <div style="font-size:0.79rem;color:#3b0764;line-height:1.5;">${ind.differentia_nl}</div>
+    </div>` : '';
+
+  // Necessary parts section
+  const parts = Array.isArray(ind.necessary_parts) ? ind.necessary_parts : [];
+  const partsHtml = parts.length ? `
+    <div style="margin-bottom:0.75rem;">
+      <div class="detail-section-label">Necessary parts</div>
+      <div style="font-size:0.79rem;line-height:1.8;">
+        ${parts.map(p => {
+          const name = typeof p === 'object' ? p.name : p;
+          const parent = typeof p === 'object' && p.parent ? ` <span style="color:#94a3b8;">(${p.parent})</span>` : '';
+          const rationale = typeof p === 'object' && p.rationale
+            ? `<div style="color:#64748b;font-size:0.73rem;margin-left:1.1rem;margin-bottom:0.2rem;">${p.rationale}</div>` : '';
+          return `<div><span style="color:#ea580c;">◈</span> <strong>${name}</strong>${parent}</div>${rationale}`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  // Reasoning section (validated only)
+  const asserted = `<span class="type-chip chip-asserted">${ind.class}</span>`;
+  const bfoTypes = (ind.inferred_roots || []).map(t => `<span class="type-chip chip-bfo">${t}</span>`).join('');
+  const inferred = (ind.inferred_types || []).map(t => `<span class="type-chip chip-inferred">${t}</span>`).join('');
+  let violHtml = '';
+  if (ind.violations && ind.violations.length) {
+    violHtml = '<div class="violation-block">' +
+      ind.violations.map(v => `<div>⚠ <strong>${v.class}</strong> — ${v.reason}</div>`).join('') +
+      '</div>';
+  }
+  const reasoningHtml = isProposed ? `
+    <div style="color:#92400e;font-size:0.78rem;margin-top:0.5rem;padding:0.4rem 0.6rem;background:#fef9c3;border-radius:4px;">
+      Awaiting validation — no reasoner inference available yet.
+    </div>` : `
+    <div style="margin-bottom:0.75rem;">
+      <div class="detail-section-label">i(${ind.label}) — asserted</div>
+      <div class="infer-chain">${asserted}</div>
+    </div>
+    ${inferred ? `<div style="margin-bottom:0.75rem;"><div class="detail-section-label">Inferred types</div><div class="infer-chain">${inferred}</div></div>` : ''}
+    ${bfoTypes ? `<div style="margin-bottom:0.75rem;"><div class="detail-section-label">BFO / IOF-Core roots</div><div class="infer-chain">${bfoTypes}</div></div>` : ''}
+    ${violHtml || '<div style="color:#16a34a;font-size:0.78rem;margin-top:0.5rem;display:flex;align-items:center;gap:0.3rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> No disjointness violations</div>'}`;
+
+  body.innerHTML = `
+    <h3 style="margin-bottom:0.15rem;">${ind.label}</h3>
+    <div style="margin-bottom:0.75rem;font-size:0.75rem;color:#64748b;">Axiom: ${modeLabel}</div>
+    ${docLink}
+    ${defHtml}
+    ${differentiaHtml}
+    ${funcHtml}
+    ${partsHtml}
+    ${reasoningHtml}
+  `;
+}
+
+function clearDetail() {
+  document.getElementById('detail-panel-body').innerHTML = `
+    <div class="detail-empty">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+      </svg>
+      Click a class to inspect its individual consequences and inferred types.
+    </div>
+  `;
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+}
+
+const PRESETS = {
+  hierarchy: ['enriched', 'genus', 'bfo_root'],
+  functions: ['enriched', 'genus', 'bfo_root', 'function'],
+  full:      ['enriched', 'genus', 'bfo_root', 'function', 'part', 'process'],
+};
+
+function setPreset(name) {
+  activeFilters = new Set(PRESETS[name] || PRESETS.hierarchy);
+  document.querySelectorAll('.filter-toggle').forEach(btn => {
+    btn.classList.toggle('active', activeFilters.has(btn.dataset.type));
+  });
+  if (graphData) renderGraph();
+}
+
+function toggleFilter(btn) {
+  const type = btn.dataset.type;
+  btn.classList.toggle('active');
+  if (activeFilters.has(type)) activeFilters.delete(type);
+  else activeFilters.add(type);
+  if (type === 'proposed') syncProposedSidebar();
+  if (graphData) renderGraph();
+}
+
+function switchTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.validate-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p =>
+    p.classList.toggle('active', p.id === 'panel-' + name));
+  if (name === 'chowlk' && currentChowlkEnrichmentId) {
+    loadChowlk(currentChowlkEnrichmentId, currentChowlkLabel, '');
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// CHOWLK  (faithful to chowlk.linkeddata.es/notation)
+// ══════════════════════════════════════════════════════════
+let cyChowlk = null;
+
+// Namespace-based background tints (colour is per-namespace, not per semantic role)
+// copi: = COPI ontology classes   iof: = IOF-Core upper ontology classes
+const CHOWLK_NS_BG = {
+  'copi': '#ffffff',
+  'iof':  '#e0e7ef',
+};
+const CHOWLK_NS_BORDER = {
+  'copi': '#334155',
+  'iof':  '#1e3a5f',
+};
+
+function chowlkNodeStyle(nodeId, nodeType) {
+  const ns = nodeId.includes(':') ? nodeId.split(':')[0] : 'copi';
+  return {
+    bg:    CHOWLK_NS_BG[ns]     || '#ffffff',
+    border: CHOWLK_NS_BORDER[ns] || '#334155',
+    borderWidth: nodeType === 'class_target' ? 3 : 2,
+  };
+}
+
+function buildChowlkElements(data) {
+  const elems = [];
+  for (const n of data.nodes) {
+    const s = chowlkNodeStyle(n.id, n.node_type);
+    // Chowlk uses namespace-prefixed identifiers as class labels
+    elems.push({ group: 'nodes', data: {
+      id: n.id, label: n.id, node_type: n.node_type,
+      enrichment_id: n.enrichment_id || null,
+      bg: s.bg, border: s.border, borderWidth: s.borderWidth,
+    }});
+  }
+  const nodeIds = new Set(data.nodes.map(n => n.id));
+  for (const e of data.edges) {
+    if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+    // restriction edges carry the property label (∃ bearerOf, ∃ hasComponentPart …)
+    let edgeLabel = '';
+    if      (e.type === 'restriction')    edgeLabel = e.property || '';
+    else if (e.type === 'equivalentClass') edgeLabel = 'owl:equivalentClass';
+    else if (e.type === 'disjointWith')   edgeLabel = 'owl:disjointWith';
+    elems.push({ group: 'edges', data: {
+      id: e.id, source: e.source, target: e.target, edge_type: e.type,
+      label: edgeLabel,
+    }});
+  }
+  return elems;
+}
+
+async function loadChowlk(enrichmentId, label, mode) {
+  currentChowlkEnrichmentId = enrichmentId;
+  currentChowlkLabel = label || '';
+
+  const labelEl  = document.getElementById('chowlk-class-label');
+  const emptyEl  = document.getElementById('chowlk-empty');
+  const badgeEl  = document.getElementById('chowlk-mode-badge');
+  const exportBtn = document.getElementById('chowlk-export-btn');
+
+  labelEl.textContent = label || '—';
+  emptyEl.style.display = 'none';
+  exportBtn.style.display = '';
+
+  badgeEl.style.display = '';
+  badgeEl.className = 'chowlk-mode-badge';
+  if (mode === 'equivalent') {
+    badgeEl.textContent = '≡ defined'; badgeEl.classList.add('chowlk-badge-equiv');
+  } else if (mode === 'necessary') {
+    badgeEl.textContent = '⊑ primitive'; badgeEl.classList.add('chowlk-badge-nec');
+  } else if (mode === 'mixed') {
+    badgeEl.textContent = '~ mixed'; badgeEl.classList.add('chowlk-badge-mixed');
+  } else {
+    badgeEl.style.display = 'none';
+  }
+
+  let data;
+  try {
+    const resp = await fetch(`/enrich/api/chowlk/${enrichmentId}`);
+    data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    if (!mode && data.axiom_mode) {
+      loadChowlk(enrichmentId, label, data.axiom_mode);
+      return;
+    }
+  } catch (e) {
+    labelEl.textContent = 'Error: ' + e.message;
+    return;
+  }
+
+  const elems = buildChowlkElements(data);
+  if (cyChowlk) cyChowlk.destroy();
+  cyChowlk = cytoscape({
+    container: document.getElementById('cy-chowlk'),
+    elements: elems,
+    style: [
+      // ── nodes ── all rectangles, coloured by namespace
+      { selector: 'node', style: {
+          'background-color': 'data(bg)',
+          'border-color': 'data(border)',
+          'border-width': 'data(borderWidth)',
+          'label': 'data(label)',
+          'color': '#0f172a',
+          'font-family': 'monospace',
+          'font-size': 10,
+          'text-valign': 'center', 'text-halign': 'center',
+          'text-wrap': 'wrap', 'text-max-width': 160,
+          'width': 'label', 'height': 'label', 'padding': 10,
+          'shape': 'rectangle',
+          'min-zoomed-font-size': 6,
+      }},
+      { selector: 'node[node_type = "class_target"]', style: { 'font-weight': 'bold', 'font-size': 11 }},
+      // ── edges ── selector-driven so hollow arrowheads work correctly
+      { selector: 'edge', style: {
+          'curve-style': 'bezier',
+          'width': 1.5,
+          'label': 'data(label)',
+          'font-size': 9,
+          'font-family': 'monospace',
+          'color': '#374151',
+          'text-rotation': 'autorotate',
+          'text-margin-y': -7,
+          'text-background-color': '#ffffff',
+          'text-background-opacity': 0.85,
+          'text-background-padding': '2px',
+          'arrow-scale': 1.1,
+      }},
+      // subClassOf → hollow triangle pointing to parent (Chowlk §2.1)
+      { selector: 'edge[edge_type = "subClassOf"]', style: {
+          'line-color': '#374151',
+          'target-arrow-shape': 'triangle',
+          'target-arrow-fill': 'hollow',
+          'target-arrow-color': '#374151',
+          'line-style': 'solid',
+      }},
+      // equivalentClass → labeled dashed arrow (Chowlk: any arrow labeled "owl:equivalentClass")
+      { selector: 'edge[edge_type = "equivalentClass"]', style: {
+          'line-color': '#b45309',
+          'target-arrow-shape': 'triangle',
+          'target-arrow-fill': 'filled',
+          'target-arrow-color': '#b45309',
+          'line-style': 'dashed',
+          'color': '#b45309',
+          'width': 1.5,
+      }},
+      // restriction (∃ / ∀) → solid arrowhead + domain oval (Chowlk: endArrow=classic;endFill=1 + startArrow=oval;startFill=0)
+      { selector: 'edge[edge_type = "restriction"]', style: {
+          'line-color': '#6b7280',
+          'target-arrow-shape': 'triangle',
+          'target-arrow-fill': 'filled',
+          'target-arrow-color': '#6b7280',
+          'source-arrow-shape': 'circle',
+          'source-arrow-fill': 'hollow',
+          'source-arrow-color': '#6b7280',
+          'line-style': 'solid',
+      }},
+      // disjointWith → labeled dashed arrow (Chowlk: arrow labeled "owl:disjointWith")
+      { selector: 'edge[edge_type = "disjointWith"]', style: {
+          'line-color': '#dc2626',
+          'target-arrow-shape': 'triangle',
+          'target-arrow-fill': 'filled',
+          'target-arrow-color': '#dc2626',
+          'line-style': 'dashed',
+          'color': '#dc2626',
+          'width': 1.5,
+      }},
+    ],
+    layout: { name: 'dagre', rankDir: 'BT', nodeSep: 90, rankSep: 110, animate: false },
+    wheelSensitivity: 0.3,
+  });
+
+  cyChowlk.on('tap', 'node', evt => {
+    const n = evt.target.data();
+    const mapKey = n.id.includes(':') ? n.id.split(':')[1] : n.id;
+    if (individualMap[mapKey]) selectClass(mapKey);
+    if (n.enrichment_id && n.enrichment_id !== enrichmentId) {
+      loadChowlk(n.enrichment_id, n.label, '');
+    }
+  });
+}
+
+document.getElementById('chowlk-export-btn').onclick = () => {
+  if (!cyChowlk) return;
+  const png = cyChowlk.png({ scale: 2, full: true, bg: 'white' });
+  const a = document.createElement('a');
+  a.href = png;
+  a.download = `copi_${currentChowlkLabel.replace(/\s+/g, '_')}.png`;
+  a.click();
+};
+
+// ══════════════════════════════════════════════════════════
+// Boot
+// ══════════════════════════════════════════════════════════
+loadGraph();
+</script>
+{% endblock %}

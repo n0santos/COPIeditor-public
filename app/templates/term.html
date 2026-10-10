@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}{{ term.preferred_label }}{% endblock %}
+{% block content %}
+
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="/">Home</a></li>
+    <li class="breadcrumb-item"><a href="/search?source={{ term.source }}">{{ source_label }}</a></li>
+    <li class="breadcrumb-item active">{{ term.preferred_label }}</li>
+  </ol>
+</nav>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-start">
+      <h2 class="card-title mb-1">{{ term.preferred_label }}</h2>
+      <div>
+        <span class="badge bg-{{ source_color }} fs-6">{{ source_label }}</span>
+        {% if term.term_type %}
+        <span class="badge bg-secondary fs-6 ms-1">{{ term.term_type }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if term.source_id %}
+    <p class="text-muted small mb-2">
+      ID: <code>{{ term.source_id }}</code>
+      {% if term.source_uri %}
+      &nbsp;|&nbsp; URI: <a href="{{ term.source_uri }}" target="_blank" rel="noopener">{{ term.source_uri }}</a>
+      {% endif %}
+    </p>
+    {% endif %}
+
+    {% if term.definition %}
+      {% if request.state.user or term.source not in copyrighted_sources %}
+      <blockquote class="blockquote">
+        <p class="fs-6 definition-text">{{ term.definition }}</p>
+      </blockquote>
+      {% else %}
+      <p class="text-muted fst-italic">Faça login para ver esta definição.</p>
+      {% endif %}
+    {% else %}
+    <p class="text-muted fst-italic">No definition available.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- Synonyms -->
+  {% if term.synonyms %}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold">Synonyms / Alternative Labels</div>
+      <ul class="list-group list-group-flush">
+        {% for syn in term.synonyms %}
+        <li class="list-group-item">{{ syn.label }}
+          {% if syn.language and syn.language != "en" %}
+          <span class="badge bg-light text-dark">{{ syn.language }}</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Hierarchy -->
+  {% if parents or children %}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold">Hierarchy</div>
+      <div class="card-body">
+        {% if parents %}
+        <p class="mb-1 text-muted small">Broader / Parent</p>
+        <ul class="mb-3">
+          {% for p in parents %}
+          <li>
+            <a href="/terms/{{ p.id }}">{{ p.preferred_label }}</a>
+            <span class="badge bg-{{ source_color }} badge-source ms-1">{{ source_label }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if children %}
+        <p class="mb-1 text-muted small">Narrower / Children</p>
+        <ul class="mb-0">
+          {% for c in children %}
+          <li>
+            <a href="/terms/{{ c.id }}">{{ c.preferred_label }}</a>
+          </li>
+          {% endfor %}
+          {% if children|length >= 50 %}
+          <li class="text-muted small">… and more</li>
+          {% endif %}
+        </ul>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Properties -->
+  {% if term.properties %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header fw-semibold">Properties / Attributes ({{ term.properties|length }})</div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0" style="table-layout:fixed; min-width:700px;">
+          <colgroup>
+            <col style="width:20%">  <!-- Name -->
+            <col style="width:7%">   <!-- Data Type -->
+            <col style="width:34%">  <!-- Unit / Valid values -->
+            <col style="width:8%">   <!-- Required -->
+            <col style="width:31%">  <!-- Definition -->
+          </colgroup>
+          <thead class="table-light">
+            <tr>
+              <th>Name</th>
+              <th>Data Type</th>
+              <th>Unit / Valid values</th>
+              <th>Required</th>
+              <th>Definition</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for prop in term.properties %}
+            {% if prop.name == 'failure_modes' %}
+            <tr>
+              <td class="fw-semibold text-nowrap" style="vertical-align:top;">
+                <span title="Annex B failure mode applicability">Failure modes</span>
+              </td>
+              <td colspan="4" style="padding-top:0.4rem; padding-bottom:0.5rem;">
+                {%- set fms = [] -%}
+                {%- if prop.definition -%}
+                  {%- for entry in prop.definition.split('; ') -%}
+                    {%- set parts = entry.split(' (', 1) -%}
+                    {%- if parts|length == 2 -%}
+                      {%- set _ = fms.append({'code': parts[0].strip(), 'desc': parts[1].rstrip(')')}) -%}
+                    {%- elif entry.strip() -%}
+                      {%- set _ = fms.append({'code': entry.strip(), 'desc': ''}) -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                {%- endif -%}
+                <details>
+                  <summary style="cursor:pointer; font-size:0.8rem; color:#475569; user-select:none;">
+                    {{ fms|length }} failure modes — click to expand
+                  </summary>
+                  <div style="display:flex; flex-wrap:wrap; gap:0.3rem; margin-top:0.5rem;">
+                    {%- for fm in fms -%}
+                    <span class="badge"
+                          style="background:#1e3a5f; color:#fff; font-size:0.72rem; font-weight:600;
+                                 padding:0.25rem 0.5rem; border-radius:4px; cursor:default;"
+                          title="{{ fm.desc }}"
+                          data-bs-toggle="tooltip" data-bs-placement="top">
+                      {{ fm.code }}
+                      <span style="font-weight:400; opacity:0.85; margin-left:0.25rem; font-size:0.68rem;">{{ fm.desc }}</span>
+                    </span>
+                    {%- endfor -%}
+                  </div>
+                </details>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td class="fw-semibold" style="word-break:break-word;">{{ prop.name }}</td>
+              <td><code>{{ prop.datatype or "—" }}</code></td>
+              <td class="small" style="word-break:break-word;">{{ prop.unit or "—" }}</td>
+              <td>
+                {% if prop.is_required %}
+                <span class="badge bg-danger">Required</span>
+                {% else %}
+                <span class="text-muted" style="font-size:0.8rem;">Optional</span>
+                {% endif %}
+              </td>
+              <td class="small text-muted" style="word-break:break-word;">{{ prop.definition or "" }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

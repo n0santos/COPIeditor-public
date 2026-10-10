@@ -1,0 +1,19 @@
+services:
+  axiomatizador:
+    build: .
+    ports:
+      - "8765:8765"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - APP_VERSION=1.1.0
+      - KEYCLOAK_URL=${KEYCLOAK_URL}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+      - KEYCLOAK_REDIRECT_URI=${KEYCLOAK_REDIRECT_URI}
+      - SESSION_SECRET=${SESSION_SECRET}
+      # SESSION_SECURE=false  # uncomment for local HTTP dev only
+    volumes:
+      # Persist the database and raw source files across container restarts
+      - ./data:/app/data
+    restart: unless-stopped

@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}API Usage — COPI Editor{% endblock %}
+
+{% block head %}
+<style>
+  .stat-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+  }
+  .stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: #64748b; font-weight: 600; }
+  .stat-value { font-size: 2rem; font-weight: 700; line-height: 1.1; margin-top: 0.25rem; }
+  .usage-table th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+  .usage-table td { font-size: 0.83rem; vertical-align: middle; }
+  .key-status {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.78rem; padding: 0.3rem 0.75rem;
+    border-radius: 20px; font-family: monospace;
+  }
+  .key-ok   { background: #dcfce7; color: #166534; }
+  .key-miss { background: #fee2e2; color: #991b1b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h4 class="mb-0" style="font-family:system-ui; font-weight:700;">API Usage</h4>
+    <div class="text-muted" style="font-size:.83rem; font-family:system-ui; margin-top:.2rem;">
+      Token consumption and estimated cost per enrichment run
+    </div>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <span class="key-status {% if api_key_set %}key-ok{% else %}key-miss{% endif %}">
+      {% if api_key_set %}✓ ANTHROPIC_API_KEY set{% else %}✗ ANTHROPIC_API_KEY not set{% endif %}
+    </span>
+    <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener"
+       class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;">
+      Check credits ↗
+    </a>
+  </div>
+</div>
+
+<div class="alert alert-info d-flex align-items-start gap-2 py-2 px-3 mb-4" style="font-size:.82rem;">
+  <span style="margin-top:.05rem;">ℹ️</span>
+  <span>The Anthropic API does not expose a credit balance endpoint. To see your remaining credits, visit
+    <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener">console.anthropic.com/settings/billing</a>.
+    The cost figures below are local estimates based on public pricing.
+  </span>
+</div>
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-2">
+    <div class="stat-card">
+      <div class="stat-label">Axiomatizations</div>
+      <div class="stat-value">{{ total_axiomatizations }}</div>
+    </div>
+  </div>
+  <div class="col-sm-2">
+    <div class="stat-card">
+      <div class="stat-label">Input tokens</div>
+      <div class="stat-value">{{ "{:,}".format(total_in) }}</div>
+    </div>
+  </div>
+  <div class="col-sm-2">
+    <div class="stat-card">
+      <div class="stat-label">Output tokens</div>
+      <div class="stat-value">{{ "{:,}".format(total_out) }}</div>
+    </div>
+  </div>
+  <div class="col-sm-2">
+    <div class="stat-card" title="Tokens served from prompt cache (90% cheaper than uncached input)">
+      <div class="stat-label">Cache reads</div>
+      <div class="stat-value" style="color:#0369a1;">{{ "{:,}".format(total_cache_read) }}</div>
+    </div>
+  </div>
+  <div class="col-sm-2">
+    <div class="stat-card" title="Tokens written to prompt cache (~25% premium, paid once per unique system prompt)">
+      <div class="stat-label">Cache writes</div>
+      <div class="stat-value" style="color:#6b7280;">{{ "{:,}".format(total_cache_write) }}</div>
+    </div>
+  </div>
+  <div class="col-sm-2">
+    <div class="stat-card">
+      <div class="stat-label">Est. total cost</div>
+      <div class="stat-value" style="color:#16a34a;">${{ "%.4f"|format(total_cost) }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Per-run table -->
+<!-- Enrichment runs -->
+<h6 class="text-uppercase fw-semibold mb-2" style="font-size:0.72rem;letter-spacing:.07em;color:#64748b;">Axiomatization runs</h6>
+{% if enrichments %}
+<div class="card border-0 shadow-sm mb-5">
+  <div class="card-body p-0">
+    <table class="table usage-table mb-0">
+      <thead class="table-light">
+        <tr>
+          <th class="ps-3">Class</th>
+          <th>Model</th>
+          <th class="text-end">Input</th>
+          <th class="text-end">Output</th>
+          <th class="text-end" title="Tokens served from prompt cache">Cache read</th>
+          <th class="text-end" title="Tokens written to prompt cache">Cache write</th>
+          <th class="text-end pe-3">Est. cost</th>
+          <th>Date</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in enrichments %}
+        <tr>
+          <td class="ps-3">
+            <a href="/enrich/{{ e.id }}" style="text-decoration:none; font-weight:500;">{{ e.cluster_label }}</a>
+          </td>
+          <td><code style="font-size:0.7rem;">{{ e.llm_model or '—' }}</code></td>
+          <td class="text-end text-muted">{{ "{:,}".format(e.input_tokens or 0) }}</td>
+          <td class="text-end text-muted">{{ "{:,}".format(e.output_tokens or 0) }}</td>
+          <td class="text-end" style="color:#0369a1;">
+            {% if e.cache_read_tokens %}{{ "{:,}".format(e.cache_read_tokens) }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="text-end text-muted">
+            {% if e.cache_write_tokens %}{{ "{:,}".format(e.cache_write_tokens) }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="text-end pe-3" style="color:#16a34a; font-weight:600;">
+            ${{ "%.4f"|format(e.estimated_cost_usd or 0) }}
+          </td>
+          <td class="text-muted">{{ e.created_at[:10] }}</td>
+          <td><span class="badge bg-{% if e.status == 'validated' %}success{% elif e.status == 'exported' %}primary{% else %}secondary{% endif %}">{{ e.status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light">
+        <tr>
+          <td colspan="2" class="ps-3 fw-semibold">Total</td>
+          <td class="text-end text-muted">{{ "{:,}".format(total_in) }}</td>
+          <td class="text-end text-muted">{{ "{:,}".format(total_out) }}</td>
+          <td class="text-end" style="color:#0369a1; font-weight:600;">{{ "{:,}".format(total_cache_read) }}</td>
+          <td class="text-end text-muted">{{ "{:,}".format(total_cache_write) }}</td>
+          <td class="text-end pe-3" style="color:#16a34a; font-weight:700;">${{ "%.4f"|format(total_cost) }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-4 mb-4">No enrichment runs with usage data yet.</div>
+{% endif %}
+
+<!-- Q&A usage -->
+<h6 class="text-uppercase fw-semibold mb-2" style="font-size:0.72rem;letter-spacing:.07em;color:#64748b;">Q&amp;A queries</h6>
+<div class="row g-3 mb-3">
+  <div class="col-sm-3">
+    <div class="stat-card">
+      <div class="stat-label">Queries</div>
+      <div class="stat-value">{{ qa_rows | length }}</div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="stat-card">
+      <div class="stat-label">Input tokens</div>
+      <div class="stat-value">{{ "{:,}".format(qa_total_in) }}</div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="stat-card">
+      <div class="stat-label">Output tokens</div>
+      <div class="stat-value">{{ "{:,}".format(qa_total_out) }}</div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="stat-card">
+      <div class="stat-label">Est. Q&amp;A cost</div>
+      <div class="stat-value" style="color:#16a34a;">${{ "%.4f"|format(qa_total_cost) }}</div>
+    </div>
+  </div>
+</div>
+{% if qa_rows %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <table class="table usage-table mb-0">
+      <thead class="table-light">
+        <tr>
+          <th class="ps-3">Question (truncated)</th>
+          <th>Model</th>
+          <th class="text-end">Input</th>
+          <th class="text-end">Output</th>
+          <th class="text-end pe-3">Est. cost</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in qa_rows %}
+        <tr>
+          <td class="ps-3" style="max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+              title="{{ r.question }}">{{ r.question[:80] }}{% if r.question|length > 80 %}…{% endif %}</td>
+          <td><code style="font-size:0.7rem;">{{ r.llm_model or '—' }}</code></td>
+          <td class="text-end text-muted">{{ "{:,}".format(r.input_tokens or 0) }}</td>
+          <td class="text-end text-muted">{{ "{:,}".format(r.output_tokens or 0) }}</td>
+          <td class="text-end pe-3" style="color:#16a34a; font-weight:600;">${{ "%.4f"|format(r.estimated_cost_usd or 0) }}</td>
+          <td class="text-muted">{{ r.created_at[:16].replace('T',' ') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light">
+        <tr>
+          <td colspan="2" class="ps-3 fw-semibold">Total</td>
+          <td class="text-end text-muted">{{ "{:,}".format(qa_total_in) }}</td>
+          <td class="text-end text-muted">{{ "{:,}".format(qa_total_out) }}</td>
+          <td class="text-end pe-3" style="color:#16a34a; font-weight:700;">${{ "%.4f"|format(qa_total_cost) }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-4">No Q&amp;A queries yet.</div>
+{% endif %}
+{% endblock %}

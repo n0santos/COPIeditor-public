@@ -1,0 +1,681 @@
+{% extends "base.html" %}
+{% block title %}Relations — COPI Editor{% endblock %}
+{% block head %}
+<style>
+  :root {
+    --accent:  #1e3a5f;
+    --accent2: #2563eb;
+    --border:  #dee2e6;
+    --muted:   #6c757d;
+    --light:   #f8fafc;
+  }
+
+  .type-obj  { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+  .type-data { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+  .status-proposed  { background:#f3f4f6; color:#374151; border:1px solid #d1d5db; }
+  .status-validated { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+  .status-exported  { background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe; }
+
+  .prop-pill {
+    font-size: 0.68rem;
+    font-family: monospace;
+    border-radius: 4px;
+    padding: 0.1rem 0.45rem;
+    display: inline-block;
+  }
+  .rel-row td { vertical-align: middle; }
+  .rel-name  { font-family: monospace; font-weight: 600; color: var(--accent); }
+  .arrow     { color: var(--muted); padding: 0 0.3rem; }
+
+  /* Edit drawer */
+  .edit-drawer {
+    display: none;
+    background: #fff;
+    border-top: 1px solid var(--border);
+  }
+  .edit-drawer.open { display: table-row; }
+  .edit-drawer td { padding: 1rem 1.25rem; }
+
+  /* Create form card */
+  .create-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    /* no overflow:hidden — would clip the autocomplete dropdown */
+    margin-bottom: 2rem;
+  }
+  .create-card .card-header-bar {
+    background: var(--light);
+    border-bottom: 1px solid var(--border);
+    border-radius: 8px 8px 0 0;   /* clip header background to card corners */
+    padding: 0.6rem 1rem;
+    font-family: system-ui, sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .create-card .card-body { padding: 1.1rem; display: none; }
+  .create-card .card-body.open { display: block; }
+
+  .char-checks { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .char-checks label { font-size: 0.83rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-0" style="font-family:system-ui,sans-serif; font-weight:700;">Object / Datatype Properties</h5>
+    <div class="text-muted" style="font-size:0.82rem;">
+      OWL properties defined in <code>copi:</code> — exported in the combined ontology Turtle.
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    {% if request.state.user %}
+    <a href="/enrich/ontology.ttl" class="btn btn-sm btn-outline-secondary" style="font-size:0.78rem;">⬇ Download Turtle</a>
+    <button class="btn btn-sm btn-primary" style="font-size:0.78rem;" onclick="toggleCreate()">+ New property</button>
+    {% endif %}
+  </div>
+</div>
+
+{% if request.state.user %}
+<!-- Create form -->
+<div class="create-card" id="createCard">
+  <div class="card-header-bar" onclick="toggleCreate()">
+    <span id="createToggleIcon">▼</span> New property
+  </div>
+  <div class="card-body open" id="createBody">
+    <form id="createForm">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold" style="font-size:0.83rem;">Name <span class="text-danger">*</span></label>
+          <input type="text" name="name" id="newPropName" class="form-control form-control-sm" placeholder="e.g. hasFluid" required
+                 style="font-family:monospace;" oninput="checkDuplicate(this.value)" list="existing-props-dl" autocomplete="off">
+          <div class="form-text">camelCase, no namespace prefix</div>
+          <div id="dup-warning" class="text-danger mt-1" style="font-size:0.75rem;display:none;"></div>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold" style="font-size:0.83rem;">Type</label>
+          <select name="prop_type" class="form-select form-select-sm">
+            <option value="ObjectProperty">ObjectProperty</option>
+            <option value="DatatypeProperty">DatatypeProperty</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold" style="font-size:0.83rem;">Domain</label>
+          <input type="text" name="domain" class="form-control form-control-sm"
+                 placeholder="e.g. Pump" list="copi-classes-dl">
+          <div class="form-text">class name or blank</div>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold" style="font-size:0.83rem;">Range</label>
+          <input type="text" name="range_type" class="form-control form-control-sm"
+                 placeholder="e.g. Fluid or xsd:string" list="copi-classes-dl">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold d-flex align-items-center gap-2" style="font-size:0.83rem;">
+            Sub-property of
+            <button type="button" class="btn-browse-iof" onclick="openPropBrowser('createParentProp')">↗ Browse IOF-Core</button>
+          </label>
+          <input type="text" name="parent_prop" id="createParentProp"
+                 class="form-control form-control-sm prop-ac-input"
+                 placeholder="Type to search (hasPart, continuant…)" autocomplete="off">
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label fw-semibold" style="font-size:0.83rem;">Label (EN)</label>
+          <input type="text" name="label_en" class="form-control form-control-sm" placeholder="has fluid">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold" style="font-size:0.83rem;">Label (PT)</label>
+          <input type="text" name="label_pt" class="form-control form-control-sm" placeholder="tem fluido">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold" style="font-size:0.83rem;">Inverse of</label>
+          <input type="text" name="inverse_of" class="form-control form-control-sm" placeholder="isFluidOf">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold" style="font-size:0.83rem;">Status</label>
+          <select name="status" class="form-select form-select-sm">
+            <option value="proposed">proposed</option>
+            <option value="validated">validated</option>
+          </select>
+        </div>
+        <div class="col-md-12">
+          <label class="form-label fw-semibold" style="font-size:0.83rem;">Characteristics</label>
+          <div class="char-checks">
+            <label><input type="checkbox" name="is_functional"> Functional</label>
+            <label><input type="checkbox" name="is_symmetric"> Symmetric</label>
+            <label><input type="checkbox" name="is_transitive"> Transitive</label>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:0.83rem;">Definition (EN)</label>
+          <textarea name="definition_en" class="form-control form-control-sm" rows="2"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" style="font-size:0.83rem;">Rationale</label>
+          <textarea name="rationale" class="form-control form-control-sm" rows="2"
+                    placeholder="Why this property is modelled here…"></textarea>
+        </div>
+      </div>
+
+      <div class="mt-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm">Create property</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleCreate()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- Relations table -->
+{% if not relations %}
+<div class="text-center py-5 text-muted">
+  <div style="font-size:3rem; opacity:.2;">↔</div>
+  <div class="mt-2">No relations defined yet.</div>
+  <div style="font-size:0.88rem;">Click <strong>+ New property</strong> to add an OWL property.</div>
+</div>
+{% else %}
+<div class="table-responsive">
+<table class="table table-sm align-middle" style="font-size:0.875rem;">
+  <thead style="font-family:system-ui,sans-serif; font-size:0.72rem; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); background:var(--light);">
+    <tr>
+      <th>Property</th>
+      <th>Type</th>
+      <th>Domain → Range</th>
+      <th>Sub-property of</th>
+      <th>Char.</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for rel in relations %}
+    <tr class="rel-row" id="row-{{ rel.id }}">
+      <td>
+        <span class="rel-name">copi:{{ rel.name }}</span>
+        {% if rel.label_en %}<br><span class="text-muted" style="font-size:0.78rem;">{{ rel.label_en }}</span>{% endif %}
+      </td>
+      <td>
+        <span class="prop-pill {% if rel.prop_type == 'ObjectProperty' %}type-obj{% else %}type-data{% endif %}">
+          {{ rel.prop_type or 'ObjectProperty' }}
+        </span>
+      </td>
+      <td style="font-family:monospace; font-size:0.8rem; color:#374151;">
+        {% if rel.domain or rel.range_type %}
+          {{ rel.domain or '⊤' }}<span class="arrow">→</span>{{ rel.range_type or '⊤' }}
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
+      <td style="font-family:monospace; font-size:0.78rem; color:#475569;">
+        {% if rel.parent_prop %}{{ rel.parent_prop }}{% else %}<span class="text-muted">—</span>{% endif %}
+      </td>
+      <td style="font-size:0.78rem; color:var(--muted);">
+        {% if rel.is_functional %}<span class="badge bg-secondary me-1">F</span>{% endif %}
+        {% if rel.is_symmetric  %}<span class="badge bg-secondary me-1">S</span>{% endif %}
+        {% if rel.is_transitive %}<span class="badge bg-secondary me-1">T</span>{% endif %}
+        {% if not rel.is_functional and not rel.is_symmetric and not rel.is_transitive %}—{% endif %}
+      </td>
+      <td>
+        <span class="prop-pill status-{{ rel.status }}">{{ rel.status }}</span>
+      </td>
+      <td>
+        <button class="btn btn-xs btn-outline-secondary" style="font-size:0.72rem; padding:.1rem .5rem;"
+                onclick="toggleEdit({{ rel.id }})">Edit</button>
+        <button class="btn btn-xs btn-outline-secondary" style="font-size:0.72rem; padding:.1rem .5rem;"
+                onclick="toggleUsage({{ rel.id }}, '{{ rel.name }}')">Used in</button>
+        <button class="btn btn-xs btn-outline-danger" style="font-size:0.72rem; padding:.1rem .5rem;"
+                onclick="deleteRel({{ rel.id }})">Del</button>
+      </td>
+    </tr>
+    <!-- Usage drawer -->
+    <tr class="edit-drawer" id="usage-{{ rel.id }}">
+      <td colspan="6" style="padding:0.75rem 1.25rem; background:#f8fafc; font-size:0.82rem;">
+        <div id="usage-body-{{ rel.id }}" style="color:#64748b;font-style:italic;">Loading…</div>
+      </td>
+    </tr>
+    <!-- Edit drawer -->
+    <tr class="edit-drawer" id="drawer-{{ rel.id }}">
+      <td colspan="6">
+        <form onsubmit="saveRel(event, {{ rel.id }})">
+          <div class="row g-2">
+            <div class="col-md-3">
+              <label class="form-label" style="font-size:0.78rem; font-weight:600;">Name</label>
+              <input type="text" name="name" class="form-control form-control-sm" value="{{ rel.name }}"
+                     style="font-family:monospace;" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label" style="font-size:0.78rem; font-weight:600;">Type</label>
+              <select name="prop_type" class="form-select form-select-sm">
+                <option value="ObjectProperty" {% if rel.prop_type == 'ObjectProperty' %}selected{% endif %}>ObjectProperty</option>
+                <option value="DatatypeProperty" {% if rel.prop_type == 'DatatypeProperty' %}selected{% endif %}>DatatypeProperty</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label" style="font-size:0.78rem; font-weight:600;">Domain</label>
+              <input type="text" name="domain" class="form-control form-control-sm"
+                     value="{{ rel.domain or '' }}" list="copi-classes-dl">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label" style="font-size:0.78rem; font-weight:600;">Range</label>
+              <input type="text" name="range_type" class="form-control form-control-sm"
+                     value="{{ rel.range_type or '' }}" list="copi-classes-dl">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label d-flex align-items-center gap-2" style="font-size:0.78rem; font-weight:600;">
+                Sub-property of
+                <button type="button" class="btn-browse-iof" onclick="openPropBrowser('edit-parent-{{ rel.id }}')">↗ Browse IOF-Core</button>
+              </label>
+              <input type="text" name="parent_prop" id="edit-parent-{{ rel.id }}" class="form-control form-control-sm prop-ac-input"
+                     value="{{ rel.parent_prop or '' }}" autocomplete="off"
+                     placeholder="Type to search…">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" style="font-size:0.78rem; font-weight:600;">Label (EN)</label>
+              <input type="text" name="label_en" class="form-control form-control-sm" value="{{ rel.label_en or '' }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" style="font-size:0.78rem; font-weight:600;">Label (PT)</label>
+              <input type="text" name="label_pt" class="form-control form-control-sm" value="{{ rel.label_pt or '' }}">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label" style="font-size:0.78rem; font-weight:600;">Inverse of</label>
+              <input type="text" name="inverse_of" class="form-control form-control-sm" value="{{ rel.inverse_of or '' }}">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label" style="font-size:0.78rem; font-weight:600;">Status</label>
+              <select name="status" class="form-select form-select-sm">
+                <option value="proposed"  {% if rel.status == 'proposed'  %}selected{% endif %}>proposed</option>
+                <option value="validated" {% if rel.status == 'validated' %}selected{% endif %}>validated</option>
+                <option value="exported"  {% if rel.status == 'exported'  %}selected{% endif %}>exported</option>
+              </select>
+            </div>
+            <div class="col-md-2 d-flex flex-column justify-content-end">
+              <div class="char-checks" style="margin-top:1.5rem;">
+                <label style="font-size:0.78rem;"><input type="checkbox" name="is_functional" {% if rel.is_functional %}checked{% endif %}> F</label>
+                <label style="font-size:0.78rem;"><input type="checkbox" name="is_symmetric"  {% if rel.is_symmetric  %}checked{% endif %}> S</label>
+                <label style="font-size:0.78rem;"><input type="checkbox" name="is_transitive" {% if rel.is_transitive %}checked{% endif %}> T</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" style="font-size:0.78rem; font-weight:600;">Definition (EN)</label>
+              <textarea name="definition_en" class="form-control form-control-sm" rows="2">{{ rel.definition_en or '' }}</textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" style="font-size:0.78rem; font-weight:600;">Rationale</label>
+              <textarea name="rationale" class="form-control form-control-sm" rows="2">{{ rel.rationale or '' }}</textarea>
+            </div>
+          </div>
+          {% if request.state.user %}
+          <div class="mt-2 d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-primary">Save</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleEdit({{ rel.id }})">Cancel</button>
+          </div>
+          {% endif %}
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+<!-- datalists (for domain/range class names only) -->
+<datalist id="copi-classes-dl"></datalist>
+<datalist id="existing-props-dl"></datalist>
+
+<!-- IOF-Core property browser modal -->
+<div id="propBrowserModal" style="display:none; position:fixed; inset:0; z-index:9000;
+     background:rgba(0,0,0,0.45); align-items:center; justify-content:center;"
+     onclick="if(event.target===this) closePropBrowser()">
+  <div style="background:white; border-radius:12px; width:640px; max-width:95vw;
+              max-height:82vh; display:flex; flex-direction:column;
+              box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <div style="padding:1rem 1.25rem 0.75rem; border-bottom:1px solid #e2e8f0;
+                display:flex; align-items:center; gap:0.75rem;">
+      <div>
+        <div style="font-weight:700; font-size:0.92rem; color:#0f172a;">Browse IOF-Core &amp; BFO Properties</div>
+        <div style="font-size:0.75rem; color:#94a3b8; margin-top:0.1rem;">Click a property to set it as "Sub-property of"</div>
+      </div>
+      <button onclick="closePropBrowser()" style="margin-left:auto; background:none; border:none;
+              font-size:1.2rem; color:#94a3b8; cursor:pointer; line-height:1;">✕</button>
+    </div>
+    <div style="padding:0.75rem 1.25rem; border-bottom:1px solid #f1f5f9;">
+      <input id="propBrowserSearch" type="text" placeholder="Search properties…"
+             class="form-control form-control-sm" autocomplete="off"
+             oninput="renderPropBrowser(this.value)">
+    </div>
+    <div id="propBrowserList" style="overflow-y:auto; flex:1; padding:0.4rem 0;"></div>
+  </div>
+</div>
+
+<style>
+.prop-ac-outer { position: relative; overflow: visible; }
+
+.btn-browse-iof {
+  background: none;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  color: #2563eb;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s, border-color .12s;
+}
+.btn-browse-iof:hover { background: #eff6ff; border-color: #93c5fd; }
+
+.prop-browser-item {
+  display: flex; align-items: flex-start; gap: 0.6rem;
+  padding: 0.55rem 1.25rem; cursor: pointer;
+  border-bottom: 1px solid #f8fafc;
+  transition: background .1s;
+}
+.prop-browser-item:hover { background: #f0f7ff; }
+.prop-browser-item .pbi-name { font-family: monospace; font-size: 0.8rem; font-weight: 700; color: #1e3a5f; }
+.prop-browser-item .pbi-src  { font-size: 0.68rem; color: #94a3b8; border: 1px solid #e2e8f0;
+                                border-radius: 3px; padding: 0.05rem 0.3rem; margin-left: 0.3rem; }
+.prop-browser-item .pbi-lbl  { font-size: 0.75rem; color: #475569; margin-top: 0.15rem; }
+.prop-browser-item .pbi-def  { font-size: 0.71rem; color: #94a3b8; margin-top: 0.1rem;
+                                display: -webkit-box; -webkit-line-clamp: 2;
+                                -webkit-box-orient: vertical; overflow: hidden; }
+.prop-ac-dd {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  min-width: 320px;
+  z-index: 1050;
+  background: white;
+  border: 1px solid #94a3b8;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  max-height: 240px;
+  overflow-y: auto;
+  display: none;
+}
+.prop-ac-dd.open { display: block; }
+.prop-ac-item {
+  padding: 0.45rem 0.75rem; cursor: pointer;
+  border-bottom: 1px solid #f1f5f9; font-size: 0.8rem;
+  line-height: 1.4;
+}
+.prop-ac-item:last-child { border-bottom: none; }
+.prop-ac-item:hover, .prop-ac-item.ac-focus { background: #eff6ff; }
+.prop-ac-name { font-family: monospace; color: #1e3a5f; font-weight: 600; }
+.prop-ac-meta { font-size: 0.68rem; color: #94a3b8; margin-left: 0.4rem; }
+.prop-ac-lbl  { font-size: 0.72rem; color: #64748b; margin-top: 0.1rem; }
+.prop-ac-empty { padding: 0.5rem 0.75rem; font-size: 0.8rem; color: #94a3b8; font-style: italic; }
+</style>
+
+<script>
+// ── Existing COPI property names ──────────────────────────────────────────
+const _existingPropNames = new Set([
+  {% for rel in relations %}'{{ rel.name }}',{% endfor %}
+]);
+
+function checkDuplicate(val) {
+  const warn = document.getElementById('dup-warning');
+  const v = val.trim();
+  if (!v) { warn.style.display = 'none'; return; }
+  if (_existingPropNames.has(v)) {
+    warn.textContent = '⚠ "' + v + '" already exists as a COPI property.';
+    warn.style.display = '';
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+// ── Load COPI class names into domain/range datalist ─────────────────────
+fetch('/enrich/api/class-names').then(r => r.json()).then(names => {
+  const dl = document.getElementById('copi-classes-dl');
+  names.forEach(n => { const o = document.createElement('option'); o.value = n; dl.appendChild(o); });
+});
+
+// ── Inline autocomplete (position:absolute inside .prop-ac-outer) ────────────
+// Each .prop-ac-input must be wrapped in a .prop-ac-outer div in the HTML.
+// The dropdown .prop-ac-dd is injected as a sibling inside that wrapper.
+
+let _ontologyProps = [];
+
+function _prefix(p) { return p.source === 'BFO' ? 'bfo:' : 'iof-core:'; }
+
+function _acRender(inputEl, dd) {
+  const q = inputEl.value.toLowerCase().trim();
+  dd.innerHTML = '';
+  if (!q) { dd.classList.remove('open'); return; }
+
+  const hits = _ontologyProps.filter(p =>
+    p.short_id.toLowerCase().includes(q) || (p.label || '').toLowerCase().includes(q)
+  ).slice(0, 50);
+
+  if (!hits.length) {
+    dd.innerHTML = `<div class="prop-ac-empty">No match for "${inputEl.value}"</div>`;
+  } else {
+    hits.forEach(p => {
+      const val  = _prefix(p) + p.short_id;
+      const tag  = p.prop_type === 'ObjectProperty' ? 'obj'
+                 : p.prop_type === 'DatatypeProperty' ? 'data' : 'ann';
+      const el = document.createElement('div');
+      el.className = 'prop-ac-item';
+      el.innerHTML =
+        `<div><span class="prop-ac-name">${val}</span><span class="prop-ac-meta">${tag} · ${p.source}</span></div>` +
+        (p.label ? `<div class="prop-ac-lbl">${p.label}</div>` : '');
+      el.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        inputEl.value = val;
+        dd.classList.remove('open');
+      });
+      dd.appendChild(el);
+    });
+  }
+  dd.classList.add('open');
+}
+
+function _acClose(dd) { dd.classList.remove('open'); }
+
+function _wireAc(inputEl) {
+  if (inputEl.dataset.acWired) return;
+  inputEl.dataset.acWired = '1';
+
+  // Wrap in .prop-ac-outer if not already
+  const outer = inputEl.closest('.prop-ac-outer') || (() => {
+    const w = document.createElement('div');
+    w.className = 'prop-ac-outer';
+    inputEl.parentNode.insertBefore(w, inputEl);
+    w.appendChild(inputEl);
+    return w;
+  })();
+
+  // Create dropdown
+  const dd = document.createElement('div');
+  dd.className = 'prop-ac-dd';
+  outer.appendChild(dd);
+
+  let focusIdx = -1;
+
+  inputEl.addEventListener('input', () => { focusIdx = -1; _acRender(inputEl, dd); });
+  inputEl.addEventListener('focus', () => { if (inputEl.value) _acRender(inputEl, dd); });
+  inputEl.addEventListener('blur',  () => setTimeout(() => _acClose(dd), 200));
+  inputEl.addEventListener('keydown', e => {
+    if (!dd.classList.contains('open')) return;
+    const items = dd.querySelectorAll('.prop-ac-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      focusIdx = Math.min(focusIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('ac-focus', i === focusIdx));
+      items[focusIdx]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      focusIdx = Math.max(focusIdx - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('ac-focus', i === focusIdx));
+      items[focusIdx]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && focusIdx >= 0) {
+      e.preventDefault();
+      inputEl.value = items[focusIdx].querySelector('.prop-ac-name').textContent;
+      _acClose(dd);
+    } else if (e.key === 'Escape') {
+      _acClose(dd);
+    }
+  });
+}
+
+fetch('/enrich/api/ontology-properties')
+  .then(r => r.json())
+  .then(data => {
+    _ontologyProps = data;
+    document.querySelectorAll('.prop-ac-input').forEach(_wireAc);
+    // Name datalist: COPI existing props only
+    const dl = document.getElementById('existing-props-dl');
+    _existingPropNames.forEach(n => {
+      const o = document.createElement('option'); o.value = n; dl.appendChild(o);
+    });
+  })
+  .catch(err => console.error('Failed to load ontology props:', err));
+
+// ── IOF-Core property browser modal ─────────────────────────────────────────
+let _browserTargetId = null;
+
+function openPropBrowser(targetInputId) {
+  _browserTargetId = targetInputId;
+  const modal = document.getElementById('propBrowserModal');
+  modal.style.display = 'flex';
+  const search = document.getElementById('propBrowserSearch');
+  search.value = '';
+  renderPropBrowser('');
+  setTimeout(() => search.focus(), 60);
+}
+
+function closePropBrowser() {
+  document.getElementById('propBrowserModal').style.display = 'none';
+  _browserTargetId = null;
+}
+
+function renderPropBrowser(q) {
+  const list = document.getElementById('propBrowserList');
+  const term = q.toLowerCase().trim();
+  const hits = term
+    ? _ontologyProps.filter(p =>
+        p.short_id.toLowerCase().includes(term) ||
+        (p.label || '').toLowerCase().includes(term) ||
+        (p.definition || '').toLowerCase().includes(term))
+    : _ontologyProps;
+
+  if (!hits.length) {
+    list.innerHTML = '<div style="padding:1.5rem; text-align:center; color:#94a3b8; font-size:0.82rem;">No properties match.</div>';
+    return;
+  }
+
+  list.innerHTML = hits.slice(0, 120).map(p => {
+    const full = _prefix(p) + p.short_id;
+    const typeTag = p.prop_type === 'ObjectProperty' ? 'obj'
+                  : p.prop_type === 'DatatypeProperty' ? 'data' : 'ann';
+    const srcColor = p.source === 'BFO' ? '#7c3aed' : '#0369a1';
+    return `<div class="prop-browser-item" onclick="selectProp('${full}')">
+      <div style="flex:1; min-width:0;">
+        <div>
+          <span class="pbi-name">${full}</span>
+          <span class="pbi-src" style="color:${srcColor}; border-color:${srcColor}22;">${p.source} · ${typeTag}</span>
+        </div>
+        ${p.label    ? `<div class="pbi-lbl">${p.label}</div>` : ''}
+        ${p.definition ? `<div class="pbi-def">${p.definition}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectProp(fullName) {
+  if (_browserTargetId) {
+    const el = document.getElementById(_browserTargetId);
+    if (el) el.value = fullName;
+  }
+  closePropBrowser();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('propBrowserModal').style.display !== 'none') {
+    closePropBrowser();
+  }
+});
+
+function toggleCreate() {
+  const body = document.getElementById('createBody');
+  const icon = document.getElementById('createToggleIcon');
+  const open = body.classList.toggle('open');
+  icon.textContent = open ? '▼' : '▶';
+}
+
+function toggleEdit(id) {
+  const drawer = document.getElementById('drawer-' + id);
+  const wasOpen = drawer.classList.contains('open');
+  drawer.classList.toggle('open');
+  if (!wasOpen) drawer.querySelectorAll('.prop-ac-input').forEach(_wireAc);
+}
+
+async function saveRel(e, id) {
+  e.preventDefault();
+  const form = e.target;
+  const fd = new FormData(form);
+  const resp = await fetch('/enrich/relations/' + id + '/update', {method:'POST', body: fd});
+  if (resp.ok) {
+    location.reload();
+  } else {
+    alert('Error saving property');
+  }
+}
+
+const _usageCache = {};
+async function toggleUsage(id, name) {
+  const drawer = document.getElementById('usage-' + id);
+  drawer.classList.toggle('open');
+  if (!drawer.classList.contains('open')) return;
+
+  const body = document.getElementById('usage-body-' + id);
+  if (_usageCache[id]) { body.innerHTML = _usageCache[id]; return; }
+
+  try {
+    const resp = await fetch('/enrich/api/relations/' + id + '/usage');
+    const data = await resp.json();
+    if (!data.length) {
+      _usageCache[id] = `<span style="color:#94a3b8;">Not referenced in any custom axiom yet.</span>`;
+    } else {
+      _usageCache[id] = '<strong style="font-size:0.75rem;text-transform:uppercase;letter-spacing:.06em;color:#64748b;">Referenced in:</strong><ul style="margin:.4rem 0 0 1.2rem;padding:0;">'
+        + data.map(e => `<li><a href="/enrich/${e.id}" style="text-decoration:none;">${e.cluster_label}</a> <span style="color:#94a3b8;font-size:0.75rem;">(${e.status})</span></li>`).join('')
+        + '</ul>';
+    }
+    body.innerHTML = _usageCache[id];
+  } catch(err) {
+    body.textContent = 'Error loading usage.';
+  }
+}
+
+async function deleteRel(id) {
+  if (!confirm('Delete this property?')) return;
+  const fd = new FormData();
+  const resp = await fetch('/enrich/relations/' + id + '/delete', {method:'POST', body: fd});
+  if (resp.ok) location.reload();
+}
+
+document.getElementById('createForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const fd = new FormData(this);
+  const resp = await fetch('/enrich/relations/create', {method:'POST', body: fd});
+  const data = await resp.json();
+  if (resp.ok && data.redirect) {
+    location.href = data.redirect;
+  } else {
+    alert(data.detail || 'Error creating property');
+  }
+});
+</script>
+{% endblock %}

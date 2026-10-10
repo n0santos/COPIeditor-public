@@ -1,0 +1,13 @@
+# ODR-009 entailment: at least one representative planned operation ⊑ PlannedProcess
+# SignalTransmissionProcess ⊑ iof-core:MeasurementProcess ⊑ iof-core:PlannedProcess
+# Returns rows when the entailment is ABSENT (failure condition).
+PREFIX copi:     <https://www.inf.ufrgs.br/ontologies/copi/>
+PREFIX iof-core: <https://spec.industrialontologies.org/ontology/construct/>
+PREFIX rdfs:     <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?missing WHERE {
+  BIND("SignalTransmissionProcess (COPI_0000035) ⊑ iof-core:PlannedProcess" AS ?missing)
+  FILTER NOT EXISTS {
+    copi:COPI_0000035 rdfs:subClassOf* iof-core:PlannedProcess .
+  }
+}

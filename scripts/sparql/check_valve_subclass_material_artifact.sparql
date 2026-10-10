@@ -1,0 +1,12 @@
+# Entailment check: Valve ⊑ iof:MaterialArtifact (must hold after ODR-013)
+# Returns a row (violation) if the entailment is ABSENT from the reasoned graph.
+PREFIX copi:     <https://www.inf.ufrgs.br/ontologies/copi/>
+PREFIX iof-core: <https://spec.industrialontologies.org/ontology/construct/>
+PREFIX rdfs:     <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?violation WHERE {
+  FILTER NOT EXISTS {
+    copi:COPI_0000077 rdfs:subClassOf+ iof-core:MaterialArtifact .
+  }
+  BIND("Valve (COPI_0000077) is not a subClassOf iof-core:MaterialArtifact — ODR-013 revert failed or was not serialized" AS ?violation)
+}

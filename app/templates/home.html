@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+{% block title %}COPI — Core Ontology for Petroleum Installations{% endblock %}
+
+{% block head %}
+<style>
+  .meta-card {
+    background: white;
+    border: 1px solid var(--copi-border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .meta-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    color: white;
+    padding: 2.25rem 2rem 1.75rem;
+  }
+  .meta-hero .ontology-name {
+    font-family: var(--font-serif);
+    font-size: 2.5rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+  .meta-hero .ontology-subtitle {
+    font-size: 0.88rem;
+    font-weight: 400;
+    color: rgba(255,255,255,0.5);
+    margin-top: 0.5rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .version-pill {
+    display: inline-block;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-family: monospace;
+    padding: 0.2rem 0.7rem;
+    margin-top: 0.75rem;
+    color: rgba(255,255,255,0.75);
+  }
+  .status-draft    { background: rgba(234,179,8,0.2);  border-color: rgba(234,179,8,0.4);  color: #fde047; }
+  .status-released { background: rgba(34,197,94,0.2);  border-color: rgba(34,197,94,0.4);  color: #86efac; }
+
+  .meta-table { width: 100%; font-size: 0.88rem; border-collapse: collapse; }
+  .meta-table tr { border-bottom: 1px solid var(--copi-border); }
+  .meta-table tr:last-child { border-bottom: none; }
+  .meta-table td { padding: 0.65rem 0.9rem; vertical-align: top; }
+  .meta-table td:first-child {
+    font-family: system-ui, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--copi-muted);
+    white-space: nowrap;
+    width: 140px;
+  }
+
+  .import-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+    font-family: monospace;
+    color: #1d4ed8;
+    margin: 0.15rem;
+    text-decoration: none;
+  }
+  .import-pill:hover { background: #dbeafe; }
+
+  .stat-box {
+    background: white;
+    border: 1px solid var(--copi-border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    text-align: center;
+  }
+  .stat-box .stat-val {
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1;
+    color: #1e293b;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .stat-box .stat-label {
+    font-size: 0.69rem;
+    font-family: system-ui, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--copi-muted);
+    margin-top: 0.3rem;
+  }
+
+  .scope-display { font-size: 0.95rem; color: #374151; line-height: 1.65; }
+  .edit-btn {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+  }
+
+  .source-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--copi-border);
+    font-size: 0.85rem;
+  }
+  .source-row:last-child { border-bottom: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- ══ Main metadata card ══ -->
+  <div class="col-lg-8">
+    <div class="meta-card">
+
+      <!-- Hero -->
+      <div class="meta-hero">
+        <div style="font-family:var(--font-sans); font-size:0.65rem; font-weight:700;
+                    text-transform:uppercase; letter-spacing:0.15em;
+                    color:rgba(255,255,255,0.35); margin-bottom:0.75rem;">
+          OWL 2 DL Ontology &middot; Editor
+        </div>
+        <div style="display:flex; align-items:center; gap:1.5rem; margin-bottom:0.75rem;">
+          <img src="/static/copi-logo.svg" alt="COPI logo"
+               style="width:90px; height:90px; border-radius:8px; flex-shrink:0; opacity:0.9; cursor:zoom-in;
+                      filter:drop-shadow(0 4px 16px rgba(0,0,0,0.5));"
+               onclick="openLogoModal()" title="Click to enlarge">
+          <div>
+            <div class="ontology-name">COPI</div>
+            <div class="ontology-subtitle">Core Ontology for Petroleum Installations</div>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="version-pill">v{{ meta.version }}</span>
+          <span class="version-pill status-{{ meta.status }}">{{ meta.status }}</span>
+        </div>
+      </div>
+
+      <!-- Metadata table -->
+      <table class="meta-table">
+        <tr>
+          <td>IRI</td>
+          <td><code style="font-size:0.83rem;">{{ meta.iri }}</code></td>
+        </tr>
+        <tr>
+          <td>Author</td>
+          <td>{{ meta.author }}</td>
+        </tr>
+        {% if meta.contributors %}
+        <tr>
+          <td>Contributors</td>
+          <td>{{ meta.contributors | join(', ') }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+          <td>Research Group</td>
+          <td>{{ meta.research_group or '—' }}</td>
+        </tr>
+        <tr>
+          <td>Research Project</td>
+          <td>{{ meta.research_project or '—' }}</td>
+        </tr>
+        <tr>
+          <td>Publisher</td>
+          <td>{{ meta.publisher }}</td>
+        </tr>
+        <tr>
+          <td>Created</td>
+          <td>{{ meta.created }}</td>
+        </tr>
+        <tr>
+          <td>Last modified</td>
+          <td>
+            {% if enrich.last_modified %}
+              {{ enrich.last_modified[:10] }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td>GitHub</td>
+          <td>
+            {% if meta.github and meta.github != 'TBD' %}
+              <a href="{{ meta.github }}" target="_blank" style="font-size:0.83rem;">{{ meta.github }}</a>
+            {% else %}
+              <span class="text-muted" style="font-size:0.83rem;">TBD</span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td>Imports</td>
+          <td>
+            {% for name, url in meta.imports %}
+            <a href="{{ url }}" target="_blank" class="import-pill">{{ name }}</a>
+            {% endfor %}
+          </td>
+        </tr>
+      </table>
+
+      <!-- Scope / Objective -->
+      <div style="padding: 1rem 1.1rem; border-top: 1px solid var(--copi-border);">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div style="font-family:system-ui,sans-serif; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--copi-muted);">
+            Scope &amp; Objective
+          </div>
+          {% if request.state.user %}
+          <button class="btn btn-sm btn-outline-secondary edit-btn" onclick="toggleScopeEdit()">
+            Edit
+          </button>
+          {% endif %}
+        </div>
+        <div id="scopeDisplay" class="scope-display">{{ meta.scope }}</div>
+        {% if request.state.user %}
+        <div id="scopeEdit" style="display:none;">
+          <textarea id="scopeText" class="form-control" rows="5" style="font-size:0.88rem;">{{ meta.scope }}</textarea>
+          <div class="d-flex gap-2 mt-2">
+            <button class="btn btn-sm btn-primary" onclick="saveScope()">Save</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="toggleScopeEdit()">Cancel</button>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+    </div><!-- /meta-card -->
+  </div>
+
+  <!-- ══ Sidebar: stats ══ -->
+  <div class="col-lg-4">
+
+    <!-- Quick stats -->
+    <div class="row g-2 mb-3">
+      <div class="col-6">
+        <div class="stat-box">
+          <div class="stat-val">{{ enrich.total or 0 }}</div>
+          <div class="stat-label">Axiomatized</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="stat-box">
+          <div class="stat-val" style="color:#16a34a;">{{ enrich.validated or 0 }}</div>
+          <div class="stat-label">Validated</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="stat-box">
+          <div class="stat-val">{{ equipment_total | default(0) }}</div>
+          <div class="stat-label">In-scope Clusters</div>
+          <div style="font-size:0.65rem; color:var(--copi-muted); margin-top:0.1rem;">{{ oos_total | default(0) }} OOS · {{ (equipment_total | default(0)) + (oos_total | default(0)) }} classified</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="stat-box">
+          <div class="stat-val">{{ by_source | length }}</div>
+          <div class="stat-label">Sources</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Source breakdown -->
+    <div class="panel mb-3">
+      <div class="panel-header">Evidence Sources</div>
+      <div class="panel-body py-0">
+        {% for src, count in by_source %}
+        <div class="source-row">
+          <span>
+            {{ source_labels.get(src, src) }}
+            {% set ver = source_versions.get(src, '') %}
+            {% if ver %}
+            <span style="font-family:monospace; font-size:0.7rem; color:var(--copi-muted);
+                         background:#f1f5f9; border-radius:3px; padding:0.1rem 0.3rem;
+                         margin-left:0.3rem;">{{ ver }}</span>
+            {% endif %}
+          </span>
+          <span style="font-family:monospace; font-size:0.82rem; color:var(--copi-muted);">{{ count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Quick links -->
+    <div class="panel">
+      <div class="panel-header">Quick Actions</div>
+      <div class="panel-body d-grid gap-2">
+        <a href="/enrich/" class="btn btn-sm btn-outline-primary">
+          Open Enrichment Workbench
+        </a>
+        {% if request.state.user %}
+        <a href="/enrich/ontology.ttl" class="btn btn-sm btn-outline-secondary">
+          ⬇ Download Combined Ontology (.ttl)
+        </a>
+        {% endif %}
+        <a href="/search" class="btn btn-sm btn-outline-secondary">
+          Browse Terms
+        </a>
+        <a href="/requirements" class="btn btn-sm btn-outline-secondary">
+          View Competency Questions
+        </a>
+        <a href="/enrich/docs" class="btn btn-sm btn-outline-secondary">
+          Ontology Class Reference
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function toggleScopeEdit() {
+    const disp = document.getElementById('scopeDisplay');
+    const edit = document.getElementById('scopeEdit');
+    if (edit.style.display === 'none') {
+      document.getElementById('scopeText').value = disp.textContent.trim();
+      edit.style.display = '';
+      disp.style.display = 'none';
+    } else {
+      edit.style.display = 'none';
+      disp.style.display = '';
+    }
+  }
+
+  async function saveScope() {
+    const scope = document.getElementById('scopeText').value;
+    const fd = new FormData();
+    fd.append('scope', scope);
+    const resp = await fetch('/ontology/update', { method: 'POST', body: fd });
+    if (resp.ok) {
+      document.getElementById('scopeDisplay').textContent = scope;
+      toggleScopeEdit();
+    }
+  }
+</script>
+{% endblock %}

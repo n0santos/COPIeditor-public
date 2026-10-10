@@ -1,0 +1,20 @@
+# Participant vocabulary baseline -- see scripts/check_participant_vocabulary.py
+#
+# Each line is a participant type an already-published entry names that is not
+# COPI vocabulary (not in copi-core/copi-vocab, not a BFO/IOF-Core redirect, not
+# a validated equipment class). Grandfathered when the gate was introduced;
+# anything NOT listed here fails. Prune a line once the entry uses a real vocab
+# type or the type has been added to copi-vocab.ttl.
+#
+# Format: <cluster_label>|<ParticipantType>
+
+bell nipple|DrillingTool
+cable tray|ElectricalCable
+casing|MaterialComponent
+pig launcher|PipelinePig
+pig receiver|PipelinePig
+pig trap|PipelinePig
+skid|EquipmentItem
+tubing hanger|TubingString
+tubing head|TubingString
+wellbore|DrillString

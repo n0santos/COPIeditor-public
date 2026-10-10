@@ -1,0 +1,11 @@
+# Entailment check: ControlValve ⊑ Valve (must hold)
+# Returns a row (violation) if the entailment is ABSENT from the reasoned graph.
+PREFIX copi: <https://www.inf.ufrgs.br/ontologies/copi/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?violation WHERE {
+  FILTER NOT EXISTS {
+    copi:COPI_0000087 rdfs:subClassOf+ copi:COPI_0000077 .
+  }
+  BIND("ControlValve (COPI_0000087) is not a subClassOf Valve (COPI_0000077) — expected by ODR-013" AS ?violation)
+}

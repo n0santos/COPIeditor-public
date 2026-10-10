@@ -1,0 +1,117 @@
+{
+  "cluster_label": "centrifugal pump",
+  "classification_basis": "both",
+  "classification_basis_rationale": "This concept encodes both functional and constructive aspects. The functional parent is 'pump' (defined by PumpingFunction - adding mechanical energy to fluid for transport). The constructive differentia is the centrifugal mechanism - impellers with vanes that generate centrifugal force to achieve pressure head, as explicitly stated in multiple source definitions.",
+  "step1_function": {
+    "function_name": "PumpingFunction",
+    "function_parent": "DesignedFunction",
+    "function_parent_enriched": false,
+    "function_nl_definition": "A DesignedFunction that is realized in a PumpingProcess and that consists in adding mechanical energy to a fluid to increase its pressure or velocity, enabling transport against resistance.",
+    "process_name": "PumpingProcess",
+    "process_parent": "PlannedProcess",
+    "process_nl_definition": "A PlannedProcess in which mechanical energy is applied to a fluid by a pump, resulting in an increase in fluid pressure or velocity sufficient to transport the fluid against system resistance.",
+    "rationale": "The identity-giving function is PumpingFunction, which is already defined in the ontology for the genus 'Pump'. All sources consistently describe centrifugal pumps as devices that add energy to fluids for transport purposes. The centrifugal mechanism is a constructive differentia, not a functional one - the core pumping function remains the same regardless of whether it's achieved through centrifugal, positive displacement, or other means."
+  },
+  "step2_genus": {
+    "genus_name": "Pump",
+    "genus_bfo_root": "Assembly",
+    "genus_enriched": true,
+    "rationale": "From the parent candidates and already-enriched classes, 'Pump' is the most specific appropriate superclass. It is already enriched in our ontology with PumpingFunction. The concept is clearly a subtype of pump, not a direct subtype of Assembly or MaterialArtifact. All sources consistently classify this as a type of pump."
+  },
+  "step3_differentia": {
+    "differentia_expression": "∃hasComponentPartAtAllTimes.Impeller ⊓ ∃hasComponentPartAtAllTimes.VoluteCasing",
+    "differentia_nl": "Distinguished from other pumps by having impellers with vanes that generate centrifugal force and a volute casing that converts this force to pressure.",
+    "genus_already_provides": [
+      "∃bearerOf.PumpingFunction",
+      "∃hasInput.FluidPortion",
+      "∃hasOutput.FluidPortion"
+    ],
+    "distinguishes_from": {
+      "positive displacement pump": "Uses centrifugal force rather than positive displacement mechanism",
+      "reciprocating pump": "Uses rotating impellers rather than reciprocating pistons",
+      "gear pump": "Uses centrifugal impellers rather than intermeshing gears"
+    },
+    "rationale": "The differentia captures the essential constructive characteristics that distinguish centrifugal pumps from other pump types. ISO 15926 explicitly states 'centrifugal force imparted by impeller is converted to pressure in the volute casing', and CFIHOS mentions 'impellers provided with vanes to generate centrifugal force'. These are the minimal structural conditions that make a pump specifically centrifugal."
+  },
+  "step4_parts": {
+    "parts": [
+      {
+        "name": null,
+        "source_label": null,
+        "parent": "MaterialArtifact",
+        "relation": "hasComponentPartAtAllTimes",
+        "is_subtype_specific": false,
+        "rationale": "Impeller is essential - mentioned in all source definitions as the component that generates centrifugal force. However, no matching concept found in Known Component Terms list."
+      },
+      {
+        "name": null,
+        "source_label": null,
+        "parent": "MaterialArtifact",
+        "relation": "hasComponentPartAtAllTimes",
+        "is_subtype_specific": false,
+        "rationale": "Volute casing is essential - ISO 15926 specifically mentions 'volute casing' where centrifugal force is converted to pressure. However, no matching concept found in Known Component Terms list."
+      }
+    ],
+    "rationale": "The essential parts that define centrifugal pump construction are impeller (generates centrifugal force) and volute casing (converts force to pressure). These are mentioned explicitly in the source definitions but unfortunately no matching concepts exist in the Known Component Terms list, so names cannot be assigned."
+  },
+  "step5_signature": {
+    "inputs": [
+      {
+        "type": "FluidPortion",
+        "count": 1,
+        "constraints": "liquid or gas at suction conditions"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "FluidPortion",
+        "count": 1,
+        "constraints": "same fluid at increased pressure and/or velocity"
+      }
+    ],
+    "transformation": "mechanical energy added to fluid through centrifugal force to increase pressure and enable transport",
+    "transformation_kind": "pressure_increase",
+    "transformation_kind_status": "controlled",
+    "proposed_kind_rationale": null,
+    "new_participant_type_definitions": [],
+    "rationale": "The signature reflects the core pumping function - taking fluid at lower energy state and outputting it at higher energy state. The transformation specifically involves pressure increase through centrifugal mechanism, which aligns with the canonical 'pressure_increase' transformation kind."
+  },
+  "axiom_mode": "necessary",
+  "primitive_rationale": "Classification basis is 'both' (functional + constructive). While the functional aspect (PumpingFunction) could support equivalence, the constructive differentia (centrifugal mechanism) requires necessary-only conditions under OWA to avoid false positives where any equipment with impellers might be classified as a standard centrifugal pump.",
+  "disjoint_with": [],
+  "disjointness_rationale": "No disjointness declared. Under the Disjointness Decision Procedure, other pump types (positive displacement, reciprocating, etc.) have different constructive mechanisms but this would be Case 1 requiring mutually exclusive structural differentiae. However, without complete structural specifications for all pump types in the ontology, disjointness is omitted under uncertainty to avoid logical inconsistency.",
+  "definitions": {
+    "nl_definition_en": "A centrifugal pump is a pump that uses impellers provided with vanes to generate centrifugal force, which is converted to pressure in a volute casing to achieve the required pressure head for fluid transport.",
+    "nl_definition_pt": "Uma bomba centrífuga é uma bomba que utiliza impulsores providos de pás para gerar força centrífuga, que é convertida em pressão em uma carcaça voluta para alcançar a altura de pressão necessária para o transporte de fluido.",
+    "semiformal_axiom": "Every centrifugal pump is a pump that has component parts including impellers and volute casing, and bears a pumping function realized in processes where centrifugal force increases fluid pressure.",
+    "fol_axiom": "∀x(CentrifugalPump(x) → Pump(x) ∧ ∃i,c(Impeller(i) ∧ VoluteCasing(c) ∧ hasComponentPartAtAllTimes(x,i) ∧ hasComponentPartAtAllTimes(x,c)))"
+  },
+  "divergence_flags": [
+    {
+      "type": "T2_granularity",
+      "evidence": "ISO 15926 provides extensive subtypes (between bearings, cantilever, canned motor, etc.) while SLB Glossary provides only a brief generic definition focused on oilfield applications",
+      "sources_involved": [
+        "iso15926",
+        "slb_glossary"
+      ]
+    },
+    {
+      "type": "T5_implicit_function",
+      "evidence": "ISO 15926 and CFIHOS explicitly describe the centrifugal mechanism and pressure conversion function, while SLB Glossary only mentions 'handling and mixing of oilfield fluids' without technical detail",
+      "sources_involved": [
+        "iso15926",
+        "cfihos",
+        "slb_glossary"
+      ]
+    }
+  ],
+  "cross_standard_notes": "ISO 15926 provides the most comprehensive technical definition with detailed mechanism description. CFIHOS and POSC Caesar align well with technical details. SLB Glossary is application-focused rather than technically descriptive. OnePetro provides good mechanical description of drag forces and spinning impeller.",
+  "confidence": {
+    "step1": "high",
+    "step2": "high",
+    "step3": "high",
+    "step4": "medium",
+    "step5": "high",
+    "overall": "high"
+  }
+}

@@ -1,0 +1,11 @@
+# Nível 1 classification: Compressor ⊑ MomentumTransferDevice (must hold)
+# Returns a row (violation) if the entailment is ABSENT from the reasoned graph.
+PREFIX copi: <https://www.inf.ufrgs.br/ontologies/copi/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?violation WHERE {
+  FILTER NOT EXISTS {
+    copi:COPI_0000073 rdfs:subClassOf+ copi:COPI_0000016 .
+  }
+  BIND("Compressor (COPI_0000073) is not a subClassOf MomentumTransferDevice (COPI_0000016)" AS ?violation)
+}

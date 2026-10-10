@@ -1,0 +1,119 @@
+{
+  "cluster_label": "ball valve",
+  "classification_basis": "constructive",
+  "classification_basis_rationale": "Ball valve is defined by its physical closure mechanism - a spherical ball that rotates 90 degrees to control flow. All sources emphasize the ball closure member as the distinguishing structural feature, not a unique function different from other valves.",
+  "step1_function": {
+    "function_name": "FlowControlFunction",
+    "function_parent": "DesignedFunction",
+    "function_parent_enriched": false,
+    "function_nl_definition": "A DesignedFunction that is realized in a FlowControlProcess and that consists in regulating, directing, or stopping the flow of fluid through a conduit by means of a movable closure element.",
+    "process_name": "FlowControlProcess",
+    "process_parent": "PlannedProcess",
+    "process_nl_definition": "A PlannedProcess in which fluid flow through a conduit is regulated, directed, or stopped by positioning a closure element to modify the flow path cross-sectional area.",
+    "rationale": "Ball valve shares the same identity-giving function as other valves - flow control. The function FlowControlFunction already exists in the ontology and is co-extensional with what ball valves are designed to realize. The distinguishing feature is the structural mechanism (ball closure), not a unique function."
+  },
+  "step2_genus": {
+    "genus_name": "Valve",
+    "genus_bfo_root": "Assembly",
+    "genus_enriched": true,
+    "rationale": "All sources consistently classify ball valve as a subtype of valve. Valve is already enriched in the ontology with function FlowControlFunction and genus Assembly. This is the most specific appropriate superclass - more specific than Assembly or MaterialArtifact, and ontologically correct as ball valves are indeed valves."
+  },
+  "step3_differentia": {
+    "differentia_expression": "∃hasComponentPartAtAllTimes.BallValveClosureMember",
+    "differentia_nl": "Has a spherical closure member that rotates to control flow",
+    "genus_already_provides": [
+      "∃bearerOf.FlowControlFunction",
+      "∃hasComponentPartAtAllTimes.ValveBody",
+      "∃hasComponentPartAtAllTimes.ValveStem"
+    ],
+    "distinguishes_from": {
+      "GateValve": "Uses sliding gate closure instead of rotating ball",
+      "GlobeValve": "Uses plug/disc closure moving perpendicular to flow instead of rotating ball",
+      "ButterflyValve": "Uses rotating disc closure instead of spherical ball",
+      "PlugValve": "Uses cylindrical/conical plug instead of spherical ball"
+    },
+    "rationale": "The ball closure member is the minimal and essential differentiating condition. All sources emphasize the spherical ball as the defining structural feature. The 90-degree rotation is a consequence of the ball design but the ball itself is the primary differentia."
+  },
+  "step4_parts": {
+    "parts": [
+      {
+        "name": "BallValveClosureMember",
+        "source_label": "BALL VALVE CLOSURE MEMBER",
+        "parent": "MaterialArtifact",
+        "relation": "hasComponentPartAtAllTimes",
+        "is_subtype_specific": false,
+        "rationale": "Essential component that defines ball valve identity - the spherical closure element that rotates to control flow",
+        "part_name_unverified": false
+      },
+      {
+        "name": "BallValveBody",
+        "source_label": "BALL VALVE BODY",
+        "parent": "MaterialArtifact",
+        "relation": "hasComponentPartAtAllTimes",
+        "is_subtype_specific": false,
+        "rationale": "Housing that contains the ball and provides flow path - necessary for all ball valves",
+        "part_name_unverified": false
+      }
+    ],
+    "rationale": "These are the minimal necessary parts specific to ball valves. Other valve parts like stems and seats are inherited from the Valve genus. The ball closure member and specialized body are what make a ball valve distinct from other valve types."
+  },
+  "step5_signature": {
+    "inputs": [
+      {
+        "type": "FluidPortion",
+        "count": 1,
+        "constraints": "any phase fluid stream requiring flow control"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "FluidPortion",
+        "count": 1,
+        "constraints": "same fluid with modified flow rate (including zero flow when closed)"
+      }
+    ],
+    "transformation": "fluid flow rate modified by rotating spherical closure element to vary flow path cross-sectional area",
+    "transformation_kind": "flow_regulation",
+    "transformation_kind_status": "controlled",
+    "proposed_kind_rationale": null,
+    "new_participant_type_definitions": [],
+    "rationale": "Ball valves regulate flow by rotating the ball to align or misalign the ball's bore with the flow path. This is flow regulation through geometric flow area modification, consistent with other valve types but achieved through the specific ball rotation mechanism."
+  },
+  "axiom_mode": "necessary",
+  "primitive_rationale": "Constructive classification basis - the structural differentia (ball closure mechanism) is necessary but making it sufficient under OWA could lead to false positives where any artifact with a ball-like closure element would be classified as a standard ball valve, including specialized hybrid equipment or custom manifolds that should not be asserted into the standard maintenance category.",
+  "disjoint_with": [
+    "GateValve",
+    "GlobeValve",
+    "ButterflyValve",
+    "PlugValve"
+  ],
+  "disjointness_rationale": "C1: GateValve. Case 1 (same genus Valve, both constructive). Closure mechanisms are mutually exclusive: BallValve has ∃hasComponentPartAtAllTimes.BallValveClosureMember (spherical rotating closure); GateValve has ∃hasComponentPartAtAllTimes.GateClosure (sliding gate closure); a physical valve can have at most one primary closure mechanism by design. C1: GlobeValve. Case 1 (same genus Valve, both constructive). Closure mechanisms are mutually exclusive: BallValve uses rotating spherical closure; GlobeValve uses plug/disc moving perpendicular to flow. C1: ButterflyValve. Case 1 (same genus Valve, both constructive). Closure mechanisms are mutually exclusive: BallValve uses spherical ball; ButterflyValve uses flat rotating disc. C1: PlugValve. Case 1 (same genus Valve, both constructive). Closure mechanisms are mutually exclusive: BallValve uses spherical ball; PlugValve uses cylindrical/conical plug.",
+  "definitions": {
+    "nl_definition_en": "A Valve that has a spherical closure member which rotates to control fluid flow by aligning or misaligning the ball's bore with the flow path.",
+    "nl_definition_pt": "Uma Válvula que possui um elemento de fechamento esférico que gira para controlar o fluxo de fluido alinhando ou desalinhando o furo da esfera com o caminho do fluxo.",
+    "semiformal_axiom": "Every ball valve is a valve that has a ball valve closure member as component part at all times",
+    "fol_axiom": "∀x(BallValve(x) → Valve(x) ∧ ∃y(BallValveClosureMember(y) ∧ hasComponentPartAtAllTimes(x,y)))"
+  },
+  "divergence_flags": [
+    {
+      "type": "T2_granularity",
+      "evidence": "ISO 15926-4 provides extensive subtype hierarchy with 20+ specific ball valve variants (floating, trunnion, eccentric, etc.) while other sources provide only basic definition without subtypes",
+      "sources_involved": [
+        "iso15926",
+        "cfihos",
+        "slb_glossary",
+        "onepetro_glossary",
+        "posc_caesar"
+      ]
+    }
+  ],
+  "cross_standard_notes": "Strong consistency across sources on core definition - all emphasize spherical closure element and rotational operation. ISO 15926-4 provides much more detailed taxonomy while others focus on essential characteristics. No conflicting identity criteria detected.",
+  "confidence": {
+    "step1": "high",
+    "step2": "high",
+    "step3": "high",
+    "step4": "high",
+    "step5": "high",
+    "overall": "high"
+  }
+}

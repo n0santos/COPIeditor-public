@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}{{ e.cluster_label | title }} — Version History{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:0.82rem;">
+      <li class="breadcrumb-item"><a href="/enrich/">Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="/enrich/{{ e.id }}">{{ e.cluster_label | title }}</a></li>
+      <li class="breadcrumb-item active">Version History</li>
+    </ol>
+  </nav>
+
+  <div class="row g-3">
+    <!-- Sidebar: list of snapshots -->
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-header fw-semibold" style="font-size:0.85rem;">Saved Snapshots</div>
+        <div class="list-group list-group-flush" id="snapshotList">
+          {% if not history %}
+          <div class="list-group-item text-muted" style="font-size:0.82rem;">No history yet. Snapshots are saved before each re-run.</div>
+          {% endif %}
+          {% for h in history %}
+          <a href="/enrich/{{ e.id }}/history/{{ h.id }}"
+             class="list-group-item list-group-item-action {% if selected and selected.id == h.id %}active{% endif %}"
+             style="font-size:0.8rem; padding:0.5rem 0.75rem;">
+            <div class="fw-semibold">#{{ h.id }}</div>
+            <div class="text-muted" style="font-size:0.72rem;">{{ h.snapshot_at }}</div>
+            <span class="badge bg-secondary mt-1" style="font-size:0.65rem;">{{ h.trigger }}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Main: snapshot diff view -->
+    <div class="col-md-9">
+      {% if selected %}
+      {% set snap = selected.snapshot %}
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-semibold" style="font-size:0.88rem;">
+            Snapshot #{{ selected.id }} — {{ selected.snapshot_at }}
+            <span class="badge bg-secondary ms-1" style="font-size:0.65rem;">{{ selected.trigger }}</span>
+          </span>
+          <a href="/enrich/{{ e.id }}" class="btn btn-sm btn-outline-primary" style="font-size:0.75rem;">← Back to current</a>
+        </div>
+        <div class="card-body" style="font-size:0.82rem;">
+
+          <!-- Step 1 -->
+          <h6 class="fw-semibold mb-2" style="color:#3b82f6;">Step 1 — Identity-Giving Function</h6>
+          <div class="row g-2 mb-3">
+            <div class="col-sm-6"><span class="text-muted">Function class:</span> <strong>{{ snap.function_name or '—' }}</strong></div>
+            <div class="col-sm-6"><span class="text-muted">Process class:</span> <strong>{{ snap.process_name or '—' }}</strong></div>
+          </div>
+
+          <!-- Step 2 -->
+          <h6 class="fw-semibold mb-2" style="color:#8b5cf6;">Step 2 — Genus Proximus</h6>
+          <div class="row g-2 mb-3">
+            <div class="col-sm-6"><span class="text-muted">Genus:</span> <strong>{{ snap.genus or '—' }}</strong></div>
+            <div class="col-sm-6"><span class="text-muted">BFO root:</span> <strong>{{ snap.genus_bfo_root or '—' }}</strong></div>
+          </div>
+
+          <!-- Step 3 -->
+          <h6 class="fw-semibold mb-2" style="color:#ef4444;">Step 3 — Differentia Specifica</h6>
+          <div class="mb-3">
+            <div class="text-muted mb-1">Axiom expression:</div>
+            <code style="font-size:0.78rem; white-space:pre-wrap;">{{ snap.differentia_expression or '—' }}</code>
+          </div>
+
+          <!-- Step 4 -->
+          <h6 class="fw-semibold mb-2" style="color:#f59e0b;">Step 4 — Necessary Parts</h6>
+          <div class="mb-3">
+            {% if snap.necessary_parts %}
+            {% set parts = snap.necessary_parts | from_json if snap.necessary_parts is string else snap.necessary_parts %}
+            <ul class="mb-0 ps-3" style="font-size:0.8rem;">
+              {% for p in parts %}
+              <li>{{ p.name if p is mapping else p }}</li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </div>
+
+          <!-- Step 5 -->
+          <h6 class="fw-semibold mb-2" style="color:#10b981;">Step 5 — Process Participation Signature</h6>
+          <div class="mb-3">
+            {% if snap.process_signature %}
+            {% set sig = snap.process_signature | from_json if snap.process_signature is string else snap.process_signature %}
+            <div class="row g-2">
+              <div class="col-sm-4"><span class="text-muted">Inputs:</span> {{ sig.inputs | join(', ') if sig.inputs else '—' }}</div>
+              <div class="col-sm-4"><span class="text-muted">Outputs:</span> {{ sig.outputs | join(', ') if sig.outputs else '—' }}</div>
+              <div class="col-sm-4"><span class="text-muted">Transformation:</span> {{ sig.transformation or '—' }}</div>
+            </div>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </div>
+
+          <!-- Meta -->
+          <hr>
+          <div class="row g-2 text-muted" style="font-size:0.75rem;">
+            <div class="col-sm-4">Status: <strong>{{ snap.status or '—' }}</strong></div>
+            <div class="col-sm-4">Axiom mode: <strong>{{ snap.axiom_mode or '—' }}</strong></div>
+            <div class="col-sm-4">Updated: <strong>{{ snap.updated_at or '—' }}</strong></div>
+          </div>
+
+        </div>
+      </div>
+      {% else %}
+      <div class="card">
+        <div class="card-body text-muted text-center py-5" style="font-size:0.88rem;">
+          Select a snapshot from the list on the left to view its contents.
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

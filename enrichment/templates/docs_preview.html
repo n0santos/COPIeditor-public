@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Ontology Documentation — COPI Editor{% endblock %}
+{% block head %}
+<style>
+  /* Break the iframe out of the Bootstrap container so it fills the full width */
+  .page-content { max-width: none !important; padding: 0 !important; }
+  #docsFrame {
+    display: block;
+    width: 100%;
+    border: none;
+    height: calc(100vh - 58px);
+  }
+  /* The embedded docs page carries its own suggestion button (pointing at the
+     public COPI repo) — hide the editor shell's copy so only one shows. */
+  #suggestFab, #suggestBackdrop { display: none !important; }
+</style>
+{% endblock %}
+{% block content %}
+<iframe id="docsFrame" src="/enrich/export/docs" title="COPI Ontology Documentation"></iframe>
+{% endblock %}
+{% block scripts %}
+<script>
+  // Fit the iframe to the space below the navbars, so the page itself never
+  // scrolls and the docs page's bottom-right suggestion button isn't clipped.
+  (function () {
+    var f = document.getElementById('docsFrame');
+    function fit() { f.style.height = (window.innerHeight - f.getBoundingClientRect().top) + 'px'; }
+    fit();
+    window.addEventListener('resize', fit);
+  })();
+</script>
+{% endblock %}

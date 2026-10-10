@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 108" width="540" height="108">
+  <defs>
+    <linearGradient id="hb" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0%"   stop-color="#0e2040"/>
+      <stop offset="100%" stop-color="#070e1c"/>
+    </linearGradient>
+    <linearGradient id="gf" x1="0.25" y1="0" x2="0.75" y2="1">
+      <stop offset="0%"   stop-color="#fde68a"/>
+      <stop offset="45%"  stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#92400e"/>
+    </linearGradient>
+    <linearGradient id="hs" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#60a5fa"/>
+      <stop offset="60%"  stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1e3a5f"/>
+    </linearGradient>
+    <radialGradient id="ig" cx="50%" cy="38%" r="58%">
+      <stop offset="0%"   stop-color="#1e3a5f" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#070e1c" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="ga" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="b"/>
+      <feColorMatrix in="b" type="matrix"
+        values="1.2 0.6 0 0 0  0.6 0.4 0 0 0  0 0 0 0 0  0 0 0 0.5 0" result="cb"/>
+      <feMerge><feMergeNode in="cb"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="ng" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="hs2" x="-15%" y="-12%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+    <clipPath id="hcp">
+      <!-- pointy-top hex: center (54,54), r=46 → sin60×46=39.8, cos60×46=23 -->
+      <polygon points="54,8 93.8,31 93.8,77 54,100 14.2,77 14.2,31"/>
+    </clipPath>
+  </defs>
+
+  <!-- ── MINI HEX BADGE ── -->
+  <!-- shadow -->
+  <polygon points="54,8 93.8,31 93.8,77 54,100 14.2,77 14.2,31"
+           fill="#000" opacity="0.35" transform="translate(1,4)"
+           filter="url(#hs2)"/>
+  <!-- fill -->
+  <polygon points="54,8 93.8,31 93.8,77 54,100 14.2,77 14.2,31"
+           fill="url(#hb)"/>
+  <polygon points="54,8 93.8,31 93.8,77 54,100 14.2,77 14.2,31"
+           fill="url(#ig)"/>
+
+  <!-- structural grid inside mini hex -->
+  <g clip-path="url(#hcp)" stroke="#4a7bc8" stroke-opacity="0.07" stroke-width="0.7" fill="none">
+    <line x1="54" y1="54" x2="54" y2="8"/>
+    <line x1="54" y1="54" x2="93.8" y2="31"/>
+    <line x1="54" y1="54" x2="93.8" y2="77"/>
+    <line x1="54" y1="54" x2="54" y2="100"/>
+    <line x1="54" y1="54" x2="14.2" y2="77"/>
+    <line x1="54" y1="54" x2="14.2" y2="31"/>
+  </g>
+
+  <!-- Peripheral nodes at r=27 from center (54,54) -->
+  <!-- sin60×27=23.4, cos60×27=13.5 -->
+  <!-- Top:(54,27) TR:(77.4,40.5) BR:(77.4,67.5) Bot:(54,81) BL:(30.6,67.5) TL:(30.6,40.5) -->
+
+  <!-- Outer ring connections -->
+  <g stroke="#1d4ed8" stroke-width="0.6" stroke-opacity="0.25" fill="none">
+    <line x1="54" y1="27" x2="77.4" y2="40.5"/>
+    <line x1="77.4" y1="40.5" x2="77.4" y2="67.5"/>
+    <line x1="77.4" y1="67.5" x2="54" y2="81"/>
+    <line x1="54" y1="81" x2="30.6" y2="67.5"/>
+    <line x1="30.6" y1="67.5" x2="30.6" y2="40.5"/>
+    <line x1="30.6" y1="40.5" x2="54" y2="27"/>
+  </g>
+  <!-- Spoke connections -->
+  <g stroke="#38bdf8" stroke-width="1" stroke-opacity="0.42" fill="none">
+    <line x1="54" y1="27"   x2="54" y2="54"/>
+    <line x1="77.4" y1="40.5" x2="54" y2="54"/>
+    <line x1="77.4" y1="67.5" x2="54" y2="54"/>
+    <line x1="54" y1="81"   x2="54" y2="54"/>
+    <line x1="30.6" y1="67.5" x2="54" y2="54"/>
+    <line x1="30.6" y1="40.5" x2="54" y2="54"/>
+  </g>
+
+  <!-- Peripheral node dots (simplified at this scale) -->
+  <g filter="url(#ng)">
+    <!-- Top: separator -->
+    <circle cx="54" cy="27"   r="6" fill="#091728" stroke="#38bdf8" stroke-width="1.2"/>
+    <rect x="50" y="23" width="8" height="7" fill="none" stroke="#38bdf8" stroke-width="0.9"/>
+    <!-- TR: pump -->
+    <circle cx="77.4" cy="40.5" r="6" fill="#091728" stroke="#60a5fa" stroke-width="1.2"/>
+    <circle cx="77.4" cy="40.5" r="3.2" fill="none" stroke="#60a5fa" stroke-width="0.9"/>
+    <!-- BR: valve -->
+    <circle cx="77.4" cy="67.5" r="6" fill="#091728" stroke="#60a5fa" stroke-width="1.2"/>
+    <polygon points="73.4,64.5 77.4,67.5 73.4,70.5" fill="none" stroke="#60a5fa" stroke-width="1"/>
+    <polygon points="81.4,64.5 77.4,67.5 81.4,70.5" fill="none" stroke="#60a5fa" stroke-width="1"/>
+    <!-- Bottom: compressor -->
+    <circle cx="54" cy="81"   r="6" fill="#091728" stroke="#38bdf8" stroke-width="1.2"/>
+    <circle cx="54" cy="81"   r="3.2" fill="none" stroke="#38bdf8" stroke-width="0.9"/>
+    <!-- BL: heat exchanger -->
+    <circle cx="30.6" cy="67.5" r="6" fill="#091728" stroke="#38bdf8" stroke-width="1.2"/>
+    <rect x="26.6" y="64.8" width="8" height="5.4" rx="2.7" fill="none" stroke="#38bdf8" stroke-width="0.9"/>
+    <!-- TL: wellbore -->
+    <circle cx="30.6" cy="40.5" r="6" fill="#091728" stroke="#38bdf8" stroke-width="1.2"/>
+    <line x1="28.4" y1="37" x2="28.4" y2="44" stroke="#38bdf8" stroke-width="1"/>
+    <line x1="32.8" y1="37" x2="32.8" y2="44" stroke="#38bdf8" stroke-width="1"/>
+    <line x1="27" y1="37" x2="34.2" y2="37" stroke="#38bdf8" stroke-width="1.2"/>
+  </g>
+
+  <!-- Central oil drop (mini) -->
+  <circle cx="54" cy="54" r="10" fill="#07101e" stroke="#2563eb" stroke-width="1.6"/>
+  <circle cx="54" cy="54" r="8"  fill="none" stroke="#f59e0b" stroke-width="0.55" stroke-opacity="0.3"/>
+  <!-- drop: tip at (54,45), circle center (54,53), r=6 -->
+  <path d="M 54,45 C 60,48 60,52 60,53 A 6,6 0 0,1 48,53 C 48,52 48,48 54,45 Z"
+        fill="url(#gf)" filter="url(#ga)"/>
+  <ellipse cx="52" cy="48" rx="1.8" ry="2.6" fill="white" opacity="0.22"
+           transform="rotate(-20,52,48)"/>
+
+  <!-- Hex border -->
+  <polygon points="54,8 93.8,31 93.8,77 54,100 14.2,77 14.2,31"
+           fill="none" stroke="#2563eb" stroke-width="2" stroke-opacity="0.75"/>
+  <polygon points="54,10 91.6,32 91.6,76 54,98 16.4,76 16.4,32"
+           fill="none" stroke="#60a5fa" stroke-width="0.45" stroke-opacity="0.18"/>
+
+  <!-- ── WORDMARK ── -->
+  <!-- "COPI" -->
+  <text x="122" y="60"
+        font-family="system-ui,-apple-system,'Helvetica Neue',sans-serif"
+        font-size="42" font-weight="900"
+        letter-spacing="-0.04em"
+        fill="white">COPI</text>
+
+  <!-- Thin gold vertical rule -->
+  <line x1="218" y1="22" x2="218" y2="86"
+        stroke="#f59e0b" stroke-width="0.8" stroke-opacity="0.35"/>
+
+  <!-- Subtitle text block -->
+  <text x="230" y="46"
+        font-family="system-ui,-apple-system,sans-serif"
+        font-size="9" font-weight="600"
+        letter-spacing="0.18em"
+        fill="#60a5fa">CORE ONTOLOGY OF</text>
+  <text x="230" y="60"
+        font-family="system-ui,-apple-system,sans-serif"
+        font-size="9" font-weight="400"
+        letter-spacing="0.13em"
+        fill="#94a3b8">PETROLEUM</text>
+  <text x="230" y="74"
+        font-family="system-ui,-apple-system,sans-serif"
+        font-size="9" font-weight="400"
+        letter-spacing="0.13em"
+        fill="#94a3b8">INSTALLATIONS</text>
+
+  <!-- ── RIGHT BADGE ── -->
+  <rect x="390" y="26" width="134" height="56" rx="7"
+        fill="#0e2040" stroke="#1d4ed8" stroke-width="1" stroke-opacity="0.5"/>
+  <!-- Top badge label -->
+  <text x="457" y="46"
+        text-anchor="middle"
+        font-family="system-ui,-apple-system,sans-serif"
+        font-size="7.5" font-weight="700"
+        letter-spacing="0.1em"
+        fill="#60a5fa">BFO 2020 · IOF-CORE</text>
+  <!-- Divider -->
+  <line x1="405" y1="53" x2="509" y2="53"
+        stroke="#1d4ed8" stroke-width="0.6" stroke-opacity="0.4"/>
+  <!-- Bottom badge label -->
+  <text x="457" y="66"
+        text-anchor="middle"
+        font-family="system-ui,-apple-system,sans-serif"
+        font-size="7" font-weight="400"
+        letter-spacing="0.09em"
+        fill="#475569">OWL 2 DL · LOT</text>
+</svg>

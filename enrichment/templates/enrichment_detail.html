@@ -1,0 +1,2342 @@
+{% extends "base.html" %}
+{% block title %}{{ e.cluster_label | title }} — Enrichment Detail{% endblock %}
+{% block head %}
+<style>
+        :root {
+            --accent: #2563eb;
+            --accent-light: #dbeafe;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --success: #16a34a;
+            --warning: #d97706;
+        }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        .top-bar {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.25rem;
+        }
+        .top-bar .title-row h5 { font-weight: 650; }
+        .top-bar .meta-row { font-size: 0.72rem; color: var(--muted); margin-top: 0.35rem; }
+        .unsaved-dot { font-size: 0.75rem; color: var(--warning); font-weight: 600; white-space: nowrap; }
+        .nav-arrow { font-size: 1.05rem; color: var(--muted); text-decoration: none; padding: 0 0.15rem; }
+        .nav-arrow.disabled { opacity: 0.3; pointer-events: none; }
+
+        .section-title {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--muted); margin: 1.75rem 0 0.6rem;
+        }
+        .section-title:first-child { margin-top: 0; }
+
+        .step-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 0.6rem;
+            overflow: hidden;
+        }
+        .step-header {
+            padding: 0.65rem 1rem;
+            font-weight: 600;
+            font-size: 0.88rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            user-select: none;
+            border-bottom: 1px solid var(--border);
+        }
+        .step-header.static { cursor: default; }
+        .step-header:not(.static):hover { background: #f8fafc; }
+        .step-card.collapsed .step-header { border-bottom: none; }
+        .step-toggle {
+            margin-left: auto;
+            font-size: 0.65rem;
+            color: var(--muted);
+            transition: transform 0.15s;
+            flex-shrink: 0;
+        }
+        .step-card.collapsed .step-toggle { transform: rotate(-90deg); }
+        .step-card.collapsed .step-body { display: none; }
+        /* One-line value preview shown in the header only while collapsed */
+        .step-summary {
+            display: none;
+            font-weight: 400;
+            font-size: 0.78rem;
+            color: var(--muted);
+            font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+        .step-card.collapsed .step-summary { display: block; }
+        .step-summary.empty { font-family: inherit; font-style: italic; }
+        .step-done-badge {
+            font-size: 0.66rem;
+            background: #dcfce7;
+            color: #166534;
+            border-radius: 9999px;
+            padding: 0.1em 0.5em;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+        .step-header .step-num {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: white;
+            background: #475569;
+            font-size: 0.72rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .step-header .step-name { flex-shrink: 0; }
+
+        .summary-card { border-top: 3px solid var(--accent); }
+        .summary-card .step-header { background: #fff; }
+
+        @media (min-width: 992px) {
+            .evidence-sidebar {
+                position: sticky;
+                top: 1rem;
+                max-height: calc(100vh - 2rem);
+                overflow-y: auto;
+                padding-right: 0.25rem;
+            }
+        }
+        .evidence-sidebar .owl-preview { max-height: 360px; overflow: auto; }
+
+        .step-body { padding: 1rem; }
+        .field-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+        .rationale-box {
+            background: #f1f5f9;
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-top: 0.5rem;
+            border-left: 3px solid var(--border);
+        }
+        .confidence-badge {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .confidence-high { background: #dcfce7; color: #166534; }
+        .confidence-medium { background: #fef3c7; color: #92400e; }
+        .confidence-low { background: #fee2e2; color: #991b1b; }
+
+        .source-def {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .source-def .source-name {
+            font-weight: 600;
+            color: var(--accent);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .axiom-toggle { cursor: pointer; }
+        .axiom-toggle input[type="radio"] { margin-right: 0.3rem; }
+        .part-item {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .part-item .part-quote { flex: 1 1 100%; font-size: 0.72rem; }
+        .part-item:last-child { border-bottom: none; }
+        .owl-preview {
+            background: #1e293b;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            white-space: pre;
+        }
+        .owl-preview .kw { color: #93c5fd; }
+        .owl-preview .cls { color: #fbbf24; }
+        .owl-preview .prop { color: #6ee7b7; }
+        .owl-preview .comment { color: #64748b; }
+        textarea.form-control { font-size: 0.85rem; }
+
+        /* Expert review panel */
+        .expert-panel {
+            margin-top: 0.75rem;
+            border-top: 1px dashed var(--border);
+            padding-top: 0.6rem;
+        }
+        .expert-panel-toggle {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .expert-panel-toggle:hover { color: var(--text); }
+        .expert-status-accepted { color: #16a34a; }
+        .expert-status-disputed { color: #dc2626; }
+        .expert-status-revised  { color: #d97706; }
+        .expert-status-pending  { color: var(--muted); }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .status-proposed { background: #fef3c7; color: #92400e; }
+        .status-reviewed { background: #dbeafe; color: #1e40af; }
+        .status-validated { background: #dcfce7; color: #166534; }
+        .status-exported { background: #f3e8ff; color: #6b21a8; }
+
+        /* ── Quality indicators ── */
+        .quality-indicator {
+          font-size: 0.72rem;
+          font-weight: 500;
+          margin-left: 0.4rem;
+          vertical-align: middle;
+        }
+        #quality-badge {
+          cursor: pointer;
+          font-size: 0.72rem;
+          user-select: none;
+        }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- Breadcrumb / action bar -->
+    <div class="top-bar">
+        <div class="title-row d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap" style="min-width:0;">
+                <a href="/enrich/" class="text-decoration-none text-muted me-1" style="font-size:0.82rem;" data-i18n="det.back">&larr; Dashboard</a>
+                <a href="{{ '/enrich/%s' % prev_id if prev_id else '#' }}" class="nav-arrow{% if not prev_id %} disabled{% endif %}" title="Previous proposal">&#8249;</a>
+                <span class="text-muted" style="font-size:0.72rem; white-space:nowrap;">{{ nav_pos }}/{{ nav_total }}</span>
+                <a href="{{ '/enrich/%s' % next_id if next_id else '#' }}" class="nav-arrow{% if not next_id %} disabled{% endif %}" title="Next proposal">&#8250;</a>
+                <h5 class="mb-0 ms-2 text-capitalize">{{ e.cluster_label }}</h5>
+                <span class="status-badge status-{{ e.status }}">{{ e.status }}</span>
+                {% if out_of_scope %}<span class="status-badge" style="background:#fef3c7;color:#92400e;">out of scope</span>{% endif %}
+                <span id="quality-badge"
+                      class="badge bg-secondary-subtle text-secondary border"
+                      title="Computing quality checks…">⋯ Quality</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span id="unsaved-indicator" class="unsaved-dot" hidden>● Unsaved changes</span>
+                <button id="translate-page-btn"
+                        class="btn btn-sm btn-outline-secondary"
+                        onclick="retranslatePage()"
+                        style="display:none;"
+                        title="Traduzir novamente">
+                    🌐 <span id="translate-btn-label">Traduzindo…</span>
+                </button>
+                {% if request.state.user %}
+                <input type="hidden" id="loaded_at" value="{{ loaded_at }}">
+                <button class="btn btn-sm btn-outline-secondary" onclick="showRerunModal()" title="Re-run LLM enrichment incorporating reviewer notes" data-i18n="det.rerun">
+                    ↺ Re-run with notes
+                </button>
+                <button id="save-btn" class="btn btn-sm btn-primary" onclick="saveAll()" title="Save (Ctrl/⌘+S)">
+                    <span data-i18n="det.save">Save Changes</span>
+                </button>
+                {% endif %}
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More actions">⋯</button>
+                    <ul class="dropdown-menu dropdown-menu-end" style="font-size:0.85rem;">
+                        <li><a class="dropdown-item" href="/enrich/{{ e.id }}/doc" target="_blank">Documentation page</a></li>
+                        <li><a class="dropdown-item" href="/enrich/{{ e.id }}/history">History</a></li>
+                        <li><a class="dropdown-item" href="/enrich/{{ e.id }}/turtle">Download Turtle</a></li>
+                        {% if request.state.user %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item" onclick="undoLast()">Undo last change</button></li>
+                        <li><button id="scope-btn" class="dropdown-item" onclick="toggleScope()">
+                            {{ 'Mark as in scope' if out_of_scope else 'Mark as out of scope' }}
+                        </button></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% if e.copi_id %}
+        <div class="meta-row">
+            <code style="font-size:0.7rem; color:#64748b;"
+                  title="COPI IRI: https://www.inf.ufrgs.br/ontologies/copi/COPI_{{ '%07d' % e.copi_id }}">COPI_{{ '%07d' % e.copi_id }}</code>
+        </div>
+        {% endif %}
+        {# Read by getUsername() for comment attribution; not displayed. #}
+        <span class="badge bg-secondary" hidden title="Attributed automatically from your login">{{ request.state.user or e.last_edited_by or e.expert_reviewer or '—' }}</span>
+    </div>
+
+    <div class="row">
+            <!-- Main Content: 4 Steps -->
+            <div class="col-lg-8">
+
+                {# ── Expert review macro ── #}
+                {% macro expert_panel(step_key) %}
+                {% set rev = (e.expert_review or {}).get(step_key, {}) %}
+                <div class="expert-panel" onclick="event.stopPropagation()">
+                    <div class="expert-panel-toggle" onclick="toggleExpert('{{ step_key }}', event)">
+                        <span id="expert_icon_{{ step_key }}">▸</span>
+                        <span data-i18n="det.expert_review">Expert review</span>
+                        {% if rev.get('status','pending') != 'pending' %}
+                        <span class="expert-status-{{ rev.get('status','pending') }}">
+                            — {{ rev.get('status') }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div id="expert_body_{{ step_key }}" style="display:none; margin-top:0.5rem;">
+                        <select class="form-select form-select-sm mb-2"
+                                id="expert_{{ step_key }}_status"
+                                style="width:180px;">
+                            {% for opt in ['pending','accepted','disputed','revised'] %}
+                            <option value="{{ opt }}"
+                                {% if rev.get('status','pending') == opt %}selected{% endif %}>
+                                {{ opt | capitalize }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <textarea class="form-control form-control-sm"
+                                  id="expert_{{ step_key }}_note"
+                                  rows="3"
+                                  placeholder="Expert disagreement or note (optional)..." data-i18n-ph="det.expert_ph"
+                                  >{{ rev.get('note','') }}</textarea>
+                    </div>
+                </div>
+                {% endmacro %}
+
+                <!-- Role Detection Banner -->
+                {% if e.is_role %}
+                <div class="step-card" style="border-top:3px solid #7c3aed; background:#faf5ff;">
+                    <div class="step-header" style="background:#f3e8ff; border-bottom:1px solid #ddd6fe;">
+                        <span style="font-size:1rem;">🎭</span>
+                        <strong style="margin-left:0.4rem;">Role Modelling</strong>
+                        <span class="ms-2 px-2 py-1 rounded" style="font-size:0.72rem; background:#7c3aed; color:#fff; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">bfo:Role</span>
+                        <small class="text-muted ms-2" style="font-weight:400;">Steps 1–5 are suppressed in OWL export</small>
+                    </div>
+                    <div class="step-body" style="font-size:0.85rem;">
+                        <div class="row g-2">
+                            <div class="col-sm-6">
+                                <div class="field-label">Bearer class</div>
+                                <input type="text" class="form-control" id="role_bearer"
+                                       value="{{ e.role_bearer or '' }}"
+                                       placeholder="e.g. PipelineSegment">
+                            </div>
+                            <div class="col-sm-12">
+                                <div class="field-label">Rationale</div>
+                                <textarea class="form-control" id="role_bearer_rationale" rows="2"
+                                          placeholder="Why this is a role and what bears it">{{ e.role_bearer_rationale or '' }}</textarea>
+                            </div>
+                            <div class="col-sm-12">
+                                <label class="d-flex align-items-center gap-2" style="font-size:0.85rem; cursor:pointer;">
+                                    <input type="checkbox" id="is_role" value="1" checked>
+                                    <span>Treat as bfo:Role (uncheck to revert to equipment kind)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% elif e.llm_raw_response is mapping and e.llm_raw_response.get('role_detection') %}
+                {% set rd = e.llm_raw_response.get('role_detection', {}) %}
+                {% if rd.get('rationale') %}
+                <div style="font-size:0.78rem; color:#6b7280; background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:0.5rem 0.75rem; margin-bottom:0.75rem;">
+                    <strong>Role check:</strong> {{ rd.get('rationale','') }}
+                    <a href="#" onclick="event.preventDefault(); document.getElementById('is_role_hidden').click();"
+                       style="margin-left:0.5rem; color:#7c3aed; font-weight:500;">Mark as role ↗</a>
+                    <input type="checkbox" id="is_role_hidden" style="display:none;" onchange="saveField('is_role', this.checked ? 1 : 0)">
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <!-- Definition & axiom summary: what the reviewer is actually validating, first -->
+                <div class="step-card summary-card">
+                    <div class="step-header static">Definition &amp; axiom</div>
+                    <div class="step-body">
+                        <!-- Primary-definition conflict: evidence CONTRADICTS the ISO 15926-4 primary
+                             definition, not just supplements it (see CLAUDE.md Step 2b/2c). Shown as a
+                             banner when set; otherwise a quiet link, so an empty box doesn't read as a finding. -->
+                        <div id="conflictBlock" class="mb-3"{% if not e.primary_definition_conflict %} hidden{% endif %}
+                             style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.6rem 0.75rem;">
+                            <div class="fw-semibold mb-1" style="font-size:0.78rem;color:#b91c1c;">⚠ Conflicts with the ISO 15926-4 primary definition</div>
+                            <textarea class="form-control" id="primary_definition_conflict" rows="2"
+                                      style="font-size:0.8rem;border-color:#fecaca;"
+                                      placeholder="Describe how the evidence contradicts the primary definition (e.g. its genus or scope appears wrong given a real correlative standard). Leave empty if evidence only supplements it."
+                            >{{ e.primary_definition_conflict or '' }}</textarea>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="field-label">Label (EN)</div>
+                                <div class="fw-semibold text-capitalize" style="padding:0.375rem 0; color:#1e3a5f;">{{ e.cluster_label }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="field-label">Label (PT-BR) <span data-quality-anchor="D" class="quality-indicator"></span></div>
+                                <input type="text" class="form-control" id="label_pt"
+                                       value="{{ e.label_pt or '' }}"
+                                       placeholder="e.g. Válvula de controle">
+                            </div>
+                            <div class="col-md-6">
+                                <div class="field-label">Definition (EN) <span data-quality-anchor="B_en" class="quality-indicator"></span><span data-quality-anchor="A" class="quality-indicator"></span><span data-quality-anchor="G" class="quality-indicator"></span></div>
+                                <textarea class="form-control" id="nl_definition_en" rows="4"
+                                    >{{ e.nl_definition_en or '' }}</textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="field-label">Definition (PT-BR) <span data-quality-anchor="B_pt" class="quality-indicator"></span></div>
+                                <textarea class="form-control" id="nl_definition_pt" rows="4"
+                                    >{{ e.nl_definition_pt or '' }}</textarea>
+                            </div>
+                            <div class="col-12">
+                                <div class="field-label">Semi-formal axiom (Aristotelian) <span data-quality-anchor="C" class="quality-indicator"></span></div>
+                                <textarea class="form-control" id="semiformal_axiom" rows="2"
+                                    >{{ e.semiformal_axiom or '' }}</textarea>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-8">
+                                <div class="field-label">Axiom type</div>
+                                <div class="d-flex gap-3 flex-wrap">
+                                    <label class="d-flex align-items-center gap-1" style="font-size:0.85rem;">
+                                        <input type="radio" name="axiom_mode" value="necessary"
+                                               {% if e.axiom_mode == 'necessary' %}checked{% endif %}>
+                                        <span><strong>Necessary only</strong> <span class="text-muted">(⊑)</span></span>
+                                    </label>
+                                    <label class="d-flex align-items-center gap-1" style="font-size:0.85rem;">
+                                        <input type="radio" name="axiom_mode" value="equivalent"
+                                               {% if e.axiom_mode == 'equivalent' %}checked{% endif %}>
+                                        <span><strong>Necessary + sufficient</strong> <span class="text-muted">(≡)</span></span>
+                                    </label>
+                                </div>
+                                {% if e.llm_raw_response is mapping and e.llm_raw_response.get('classification_basis') %}
+                                {% set cb = e.llm_raw_response.get('classification_basis') %}
+                                <details class="mt-1" style="font-size:0.76rem; color:var(--muted);">
+                                    <summary style="cursor:pointer;">
+                                        LLM classification basis:
+                                        <strong>{% if cb == 'functional' %}function-based → ≡{% elif cb == 'constructive' %}structure-based → ⊑{% else %}{{ cb }}{% endif %}</strong>
+                                    </summary>
+                                    <div class="mt-1" style="color:#475569;">{{ e.llm_raw_response.get('classification_basis_rationale', '') }}</div>
+                                </details>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <div class="field-label">Validation status</div>
+                                <select class="form-select form-select-sm" id="status">
+                                    <option value="proposed" {% if e.status == 'proposed' %}selected{% endif %}>Proposed</option>
+                                    <option value="reviewed" {% if e.status == 'reviewed' %}selected{% endif %}>Reviewed</option>
+                                    <option value="validated" {% if e.status == 'validated' %}selected{% endif %}>Validated</option>
+                                    <option value="exported" {% if e.status == 'exported' %}selected{% endif %}>Exported</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-3" id="primitiveRationaleGroup">
+                            <div class="field-label">Why primitive (necessary only)</div>
+                            <textarea class="form-control form-control-sm" id="primitive_rationale" rows="2"
+                                >{{ e.primitive_rationale or '' }}</textarea>
+                        </div>
+
+                        <div class="mt-3">
+                            <div class="field-label">Reviewer notes</div>
+                            <textarea class="form-control form-control-sm" id="reviewer_notes" rows="2"
+                                      placeholder="Your notes on this enrichment..."
+                                >{{ e.reviewer_notes or '' }}</textarea>
+                        </div>
+                        {% if e.status == 'reviewed' %}
+                        <div class="mt-2">
+                            <div class="field-label">Second reviewer notes</div>
+                            <textarea class="form-control form-control-sm" id="second_reviewer_notes" rows="2"
+                                      >{{ e.second_reviewer_notes or '' }}</textarea>
+                            <small class="text-muted" style="font-size:0.72rem;">Optional — attributed automatically to your login on save.</small>
+                        </div>
+                        {% endif %}
+
+                        <details class="mt-3">
+                            <summary class="field-label" style="cursor:pointer; display:list-item;">FOL theory &amp; disjointness</summary>
+                            <div class="mt-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                  <div class="field-label mb-0">First-order logic theory (generated)</div>
+                                  <button type="button" class="btn btn-sm btn-outline-secondary"
+                                          onclick="toggleFolOverride()"
+                                          style="font-size:0.7rem;padding:0.1rem 0.5rem;">
+                                    Manual override
+                                  </button>
+                                </div>
+                                <div id="folGenerated" class="border rounded p-2"
+                                     style="background:#f8fafc;font-family:monospace;font-size:0.82rem;line-height:1.7;min-height:2.5rem;">
+                                  <span class="text-muted" style="font-size:0.8rem;">Loading…</span>
+                                </div>
+                                <div id="folOverridePanel" style="display:none;margin-top:0.4rem;">
+                                  <div style="font-size:0.72rem;color:#6b7280;margin-bottom:0.2rem;">
+                                    Override (stored in DB, used in exports if non-empty)
+                                  </div>
+                                  <textarea class="form-control" id="fol_axiom" rows="3"
+                                            style="font-family:monospace;font-size:0.8rem;"
+                                  >{{ e.fol_axiom or '' }}</textarea>
+                                </div>
+                                <div class="field-label mt-3">Disjoint with</div>
+                                <input type="text" class="form-control form-control-sm" id="disjoint_with"
+                                       value="{{ e.disjoint_with|join(', ') if e.disjoint_with is iterable and e.disjoint_with is not string else '' }}"
+                                       placeholder="Compressor, Valve, ...">
+                            </div>
+                        </details>
+
+                        {% if not e.primary_definition_conflict %}
+                        <button type="button" id="conflictLink" class="btn btn-link p-0 mt-3" style="font-size:0.74rem; color:var(--muted); text-decoration:none;"
+                                onclick="document.getElementById('conflictBlock').hidden=false; this.hidden=true; document.getElementById('primary_definition_conflict').focus();">
+                            + Record a conflict with the primary definition
+                        </button>
+                        {% endif %}
+                        {{ expert_panel('axiom_mode') }}
+                    </div>
+                </div>
+
+                <div class="section-title">Axiomatization steps</div>
+
+                <!-- Step 1: Identity-Giving Function -->
+                <div class="step-card step-1{% if e.function_name %} collapsed{% endif %}" id="step-card-1">
+                    <div class="step-header" onclick="toggleStep(1)">
+                        <span class="step-num">1</span>
+                        <span class="step-name" data-i18n="det.step1">Identity-Giving Function</span>
+                        {% if e.function_name %}<span class="step-done-badge" data-i18n="det.done">✓ done</span>{% endif %}
+                        {% set _gap = e.core_operation_gap if e.core_operation_gap is mapping else None %}
+                        {% if e.function_name and not core_anchor %}<span class="step-done-badge" style="background:{{ '#e0e7ff' if _gap else '#fef3c7' }};color:{{ '#3730a3' if _gap else '#92400e' }};" title="COPI-Core anchoring">{{ _gap.kind|replace('_', ' ') if _gap else '⚠ not anchored' }}</span>{% endif %}
+                        <span class="step-summary{% if not e.function_name %} empty{% endif %}">{% if e.function_name %}{{ e.function_name }}{% if e.process_name %} → {{ e.process_name }}{% endif %}{% if core_anchor %} ⊑ {{ core_anchor }}{% endif %}{% else %}not set{% endif %}</span>
+                        <span class="step-toggle">▼</span>
+                    </div>
+                    <div class="step-body">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <div class="field-label">Function Class</div>
+                                <input type="text" class="form-control" id="function_name"
+                                       value="{{ e.function_name or '' }}">
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="field-label d-flex justify-content-between">
+                                  <span data-i18n="det.fn_parent">Parent</span>
+                                  <a href="/enrich/imported-ontologies?uri=https://spec.industrialontologies.org/ontology/construct/DesignedFunction"
+                                     target="_blank" style="font-size:0.75rem;" title="View DesignedFunction in ontology browser">↗ IOF-Core</a>
+                                </div>
+                                <input type="text" class="form-control" id="function_parent"
+                                       value="{{ e.function_parent or 'DesignedFunction' }}" readonly>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="field-label" data-i18n="det.proc_class">Process Class</div>
+                                <input type="text" class="form-control" id="process_name"
+                                       value="{{ e.process_name or '' }}">
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="field-label d-flex justify-content-between">
+                                  <span data-i18n="det.proc_parent">Process Parent</span>
+                                  <a href="/enrich/imported-ontologies?uri=https://spec.industrialontologies.org/ontology/construct/PlannedProcess"
+                                     target="_blank" style="font-size:0.75rem;" title="View PlannedProcess in ontology browser">↗ IOF-Core</a>
+                                </div>
+                                {% set _pp = e.process_parent or 'PlannedProcess' %}
+                                {% set _op_names = core_operation_options | map(attribute=0) | list %}
+                                <select class="form-select" id="process_parent" onchange="syncGapFields()">
+                                    {% for name, depth in core_operation_options %}
+                                    <option value="{{ name }}" {% if name == _pp %}selected{% endif %}>{{ '— ' * depth }}{{ name }}</option>
+                                    {% endfor %}
+                                    {% if _pp not in _op_names and _pp != 'PlannedProcess' %}
+                                    <option value="{{ _pp }}" selected>{{ _pp }} (enriched process)</option>
+                                    {% endif %}
+                                    <option value="PlannedProcess" {% if _pp == 'PlannedProcess' %}selected{% endif %}>PlannedProcess — no COPI-Core operation (record a gap)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3" style="font-size:0.8rem;">
+                            <span class="field-label d-inline">COPI-Core operation</span>
+                            {% if core_anchor %}
+                            <span class="ms-1"><code>{{ core_anchor }}</code> <span class="text-muted">via process parent <code>{{ e.process_parent }}</code></span></span>
+                            {% elif _gap %}
+                            <div class="mt-1 p-2" style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;">
+                                <strong style="color:#3730a3;">{{ 'Out of COPI scope' if _gap.kind == 'out_of_scope' else 'COPI-Core coverage gap' }}</strong>
+                                {% if _gap.nearest_operation %}<span class="text-muted"> · nearest: <code>{{ _gap.nearest_operation }}</code></span>{% endif %}
+                                {% if _gap.rationale %}<div class="text-muted mt-1">{{ _gap.rationale }}</div>{% endif %}
+                            </div>
+                            {% else %}
+                            <div class="mt-1 p-2" style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;color:#92400e;">
+                                ⚠ Process parent <code>{{ e.process_parent or 'PlannedProcess' }}</code> reaches no COPI-Core operation, and no gap (out of scope / coverage gap) is recorded.
+                            </div>
+                            {% endif %}
+                            <div id="gapFields" class="row g-2 mt-1"{% if core_anchor %} hidden{% endif %}>
+                                <div class="col-sm-5">
+                                    <label class="field-label" for="gap_kind">Why no operation</label>
+                                    <select class="form-select form-select-sm" id="gap_kind">
+                                        <option value="" {% if not _gap %}selected{% endif %}>— not recorded —</option>
+                                        <option value="core_coverage_gap" {% if _gap and _gap.kind == 'core_coverage_gap' %}selected{% endif %}>In scope, COPI-Core has no operation</option>
+                                        <option value="out_of_scope" {% if _gap and _gap.kind == 'out_of_scope' %}selected{% endif %}>Out of COPI scope</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-7">
+                                    <label class="field-label" for="gap_nearest">Nearest operation considered</label>
+                                    <input type="text" class="form-control form-control-sm" id="gap_nearest" value="{{ _gap.nearest_operation if _gap and _gap.nearest_operation else '' }}" placeholder="e.g. FlowControl">
+                                </div>
+                                <div class="col-12">
+                                    <label class="field-label" for="gap_rationale">Rationale</label>
+                                    <textarea class="form-control form-control-sm" id="gap_rationale" rows="2" placeholder="Why none of the operations fits">{{ _gap.rationale if _gap else '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        {% if e.function_rationale %}
+                        <div class="rationale-box" data-translatable="rat_step1">
+                            <strong data-i18n="det.llm_rationale">LLM rationale:</strong>
+                            <span class="translatable-text">{{ e.function_rationale }}</span>
+                        </div>
+                        {% endif %}
+                        {{ expert_panel('step1') }}
+                    </div>
+                </div>
+
+                <!-- Step 2: Genus -->
+                <div class="step-card step-2{% if e.genus %} collapsed{% endif %}" id="step-card-2">
+                    <div class="step-header" onclick="toggleStep(2)">
+                        <span class="step-num">2</span>
+                        <span class="step-name" data-i18n="det.step2">Genus Proximus</span>
+                        {% if e.genus %}<span class="step-done-badge" data-i18n="det.done">✓ done</span>{% endif %}
+                        <span class="step-summary{% if not e.genus %} empty{% endif %}">{% if e.genus %}{{ e.genus }}{% if e.genus_bfo_root and e.genus_bfo_root != e.genus %} · {{ e.genus_bfo_root }}{% endif %}{% else %}not set{% endif %}</span>
+                        <span class="step-toggle">▼</span>
+                    </div>
+                    <div class="step-body">
+                        <!-- Genus name (free text — the specific superclass) -->
+                        <div class="mb-3">
+                            <div class="field-label">Genus (genus proximum)</div>
+                            <input type="text" id="genus" name="genus" class="form-control"
+                                   value="{{ e.genus or '' }}"
+                                   placeholder="e.g. Valve, Pump, Assembly, MaterialArtifact…">
+                            <div class="form-text">Most specific superclass — may be a domain class like "Valve" or an IOF-Core root.</div>
+                        </div>
+
+                        <!-- BFO/IOF-Core root (radio — 7 options) -->
+                        <div class="mb-2">
+                            <div class="field-label" data-i18n="det.iof_root">BFO/IOF-Core Root</div>
+                            {% set _all_roots = ['Assembly','MaterialArtifact','EngineeredSystem','Site','Object','ObjectAggregate','FiatObjectPart'] %}
+                            {% set bfo_root = e.genus_bfo_root or (e.genus if e.genus in _all_roots else '') %}
+
+                            <!-- bfo:Object branch -->
+                            <div class="text-muted mb-1" style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em;">bfo:Object branch</div>
+                            <div class="d-flex gap-2 flex-wrap mb-2">
+                                <label class="axiom-toggle d-flex align-items-center gap-2 p-2 rounded border
+                                              {% if bfo_root == 'Assembly' %}border-primary bg-light{% endif %}"
+                                       style="flex:1; min-width:150px; cursor:pointer;">
+                                    <input type="radio" name="genus_bfo_root" value="Assembly"
+                                           {% if bfo_root == 'Assembly' %}checked{% endif %}>
+                                    <div>
+                                        <strong>
+                                          <a href="/enrich/imported-ontologies?uri=https://spec.industrialontologies.org/ontology/construct/Assembly"
+                                             target="_blank" onclick="event.stopPropagation()"
+                                             style="text-decoration:none;color:inherit;">Assembly ↗</a>
+                                        </strong>
+                                        <div class="text-muted" style="font-size:0.78rem;">Disassemblable unit (pump, compressor, HX)</div>
+                                    </div>
+                                </label>
+                                <label class="axiom-toggle d-flex align-items-center gap-2 p-2 rounded border
+                                              {% if bfo_root == 'MaterialArtifact' %}border-primary bg-light{% endif %}"
+                                       style="flex:1; min-width:150px; cursor:pointer;">
+                                    <input type="radio" name="genus_bfo_root" value="MaterialArtifact"
+                                           {% if bfo_root == 'MaterialArtifact' %}checked{% endif %}>
+                                    <div>
+                                        <strong>
+                                          <a href="/enrich/imported-ontologies?uri=https://spec.industrialontologies.org/ontology/construct/MaterialArtifact"
+                                             target="_blank" onclick="event.stopPropagation()"
+                                             style="text-decoration:none;color:inherit;">MaterialArtifact ↗</a>
+                                        </strong>
+                                        <div class="text-muted" style="font-size:0.78rem;">Monolithic artefact (valve, pipe, sensor)</div>
+                                    </div>
+                                </label>
+                                <label class="axiom-toggle d-flex align-items-center gap-2 p-2 rounded border
+                                              {% if bfo_root == 'Object' %}border-primary bg-light{% endif %}"
+                                       style="flex:1; min-width:150px; cursor:pointer;">
+                                    <input type="radio" name="genus_bfo_root" value="Object"
+                                           {% if bfo_root == 'Object' %}checked{% endif %}>
+                                    <div>
+                                        <strong>
+                                          <a href="/enrich/imported-ontologies?uri=http://purl.obolibrary.org/obo/BFO_0000030"
+                                             target="_blank" onclick="event.stopPropagation()"
+                                             style="text-decoration:none;color:inherit;">Object ↗</a>
+                                        </strong>
+                                        <div class="text-muted" style="font-size:0.78rem;">bfo:Object — when neither Assembly nor MaterialArtifact fits</div>
+                                    </div>
+                                </label>
+                                <label class="axiom-toggle d-flex align-items-center gap-2 p-2 rounded border
+                                              {% if bfo_root == 'FiatObjectPart' %}border-primary bg-light{% endif %}"
+                                       style="flex:1; min-width:150px; cursor:pointer;">
+                                    <input type="radio" name="genus_bfo_root" value="FiatObjectPart"
+                                           {% if bfo_root == 'FiatObjectPart' %}checked{% endif %}>
+                                    <div>
+                                        <strong>
+                                          <a href="/enrich/imported-ontologies?uri=http://purl.obolibrary.org/obo/BFO_0000024"
+                                             target="_blank" onclick="event.stopPropagation()"
+                                             style="text-decoration:none;color:inherit;">FiatObjectPart ↗</a>
+                                        </strong>
+                                        <div class="text-muted" style="font-size:0.78rem;">Fiat part (well interval, pipe segment)</div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- bfo:ObjectAggregate branch -->
+                            <div class="text-muted mb-1" style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em;">bfo:ObjectAggregate branch</div>
+                            <div class="d-flex gap-2 flex-wrap mb-2">
+                                <label class="axiom-toggle d-flex align-items-center gap-2 p-2 rounded border
+                                              {% if bfo_root == 'EngineeredSystem' %}border-primary bg-light{% endif %}"
+                                       style="flex:1; min-width:150px; cursor:pointer;">
+                                    <input type="radio" name="genus_bfo_root" value="EngineeredSystem"
+                                           {% if bfo_root == 'EngineeredSystem' %}checked{% endif %}>
+                                    <div>
+                                        <strong>
+                                          <a href="/enrich/imported-ontologies?uri=https://spec.industrialontologies.org/ontology/construct/EngineeredSystem"
+                                             target="_blank" onclick="event.stopPropagation()"
+                                             style="text-decoration:none;color:inherit;">EngineeredSystem ↗</a>
+                                        </strong>
+                                        <div class="text-muted" style="font-size:0.78rem;">Deliberate system of interacting objects (train, package)</div>
+                                    </div>
+                                </label>
+                                <label class="axiom-toggle d-flex align-items-center gap-2 p-2 rounded border
+                                              {% if bfo_root == 'ObjectAggregate' %}border-primary bg-light{% endif %}"
+                                       style="flex:1; min-width:150px; cursor:pointer;">
+                                    <input type="radio" name="genus_bfo_root" value="ObjectAggregate"
+                                           {% if bfo_root == 'ObjectAggregate' %}checked{% endif %}>
+                                    <div>
+                                        <strong>
+                                          <a href="/enrich/imported-ontologies?uri=http://purl.obolibrary.org/obo/BFO_0000027"
+                                             target="_blank" onclick="event.stopPropagation()"
+                                             style="text-decoration:none;color:inherit;">ObjectAggregate ↗</a>
+                                        </strong>
+                                        <div class="text-muted" style="font-size:0.78rem;">bfo:ObjectAggregate — when EngineeredSystem is too specific</div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- bfo:ImmaterialEntity branch -->
+                            <div class="text-muted mb-1" style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em;">bfo:ImmaterialEntity branch</div>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <label class="axiom-toggle d-flex align-items-center gap-2 p-2 rounded border
+                                              {% if bfo_root == 'Site' %}border-warning bg-light{% endif %}"
+                                       style="flex:1; min-width:150px; cursor:pointer;">
+                                    <input type="radio" name="genus_bfo_root" value="Site"
+                                           {% if bfo_root == 'Site' %}checked{% endif %}>
+                                    <div>
+                                        <strong>
+                                          <a href="/enrich/imported-ontologies?uri=http://purl.obolibrary.org/obo/BFO_0000029"
+                                             target="_blank" onclick="event.stopPropagation()"
+                                             style="text-decoration:none;color:inherit;">Site ↗</a>
+                                        </strong>
+                                        <div class="text-muted" style="font-size:0.78rem;">bfo:Site — cavity / spatial region (wellbore, annulus). <em>No DesignedFunction axiom.</em></div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        {% if e.genus_rationale %}
+                        <div class="rationale-box" data-translatable="rat_step2">
+                            <strong data-i18n="det.llm_rationale">LLM rationale:</strong>
+                            <span class="translatable-text">{{ e.genus_rationale }}</span>
+                        </div>
+                        {% endif %}
+                        {{ expert_panel('step2') }}
+                    </div>
+                </div>
+
+                <!-- Step 3: Differentia Specifica -->
+                <div class="step-card step-3{% if e.differentia_expression %} collapsed{% endif %}" id="step-card-3">
+                    <div class="step-header" onclick="toggleStep(3)">
+                        <span class="step-num">3</span>
+                        <span class="step-name" data-i18n="det.step3">Differentia Specifica</span>
+                        {% if e.differentia_expression %}<span class="step-done-badge" data-i18n="det.done">✓ done</span>{% endif %}
+                        <span class="step-summary{% if not e.differentia_expression %} empty{% endif %}" title="{{ e.differentia_expression or '' }}">{{ e.differentia_expression or 'not set' }}</span>
+                        <span class="step-toggle">▼</span>
+                    </div>
+                    <div class="step-body">
+                        {% if e.genus %}
+                        <div class="mb-2" style="font-size:.78rem; color:var(--muted); font-family:system-ui;">
+                            Conditions that distinguish
+                            <strong style="color:#1e293b;">{{ e.cluster_label | title }}</strong>
+                            from sibling classes under genus
+                            <strong style="color:#8b5cf6;">{{ e.genus }}</strong>.
+                            Only what is <em>not</em> already entailed by the genus.
+                        </div>
+                        {% endif %}
+
+                        <div class="field-label">Differentia expression</div>
+                        <input type="text" class="form-control form-control-sm font-monospace mb-2"
+                               id="differentia_expression"
+                               value="{{ e.differentia_expression or '' }}"
+                               placeholder="e.g. ∃hasPart.Actuator ⊓ ∃bearerOf.ProcessControlledFlowFunction">
+
+                        <div class="field-label">Differentia (natural language)</div>
+                        <textarea class="form-control form-control-sm mb-2" id="differentia_nl" rows="2"
+                                  placeholder="One sentence: what makes this species distinct from other species under the genus."
+                                  >{{ e.differentia_nl or '' }}</textarea>
+
+                        {% if e.genus_already_provides %}
+                        {% set gap = e.genus_already_provides if e.genus_already_provides is iterable and e.genus_already_provides is not string else [] %}
+                        {% if gap %}
+                        <div class="field-label">Inherited from genus (do not repeat in axiom)</div>
+                        <div class="mb-2" style="font-family:monospace; font-size:.78rem; color:var(--muted);">
+                            {% for cond in gap %}
+                            <span class="badge bg-light text-secondary border me-1">{{ cond }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {% endif %}
+
+                        {% if e.distinguishes_from %}
+                        {% set dtf = e.distinguishes_from if e.distinguishes_from is mapping else {} %}
+                        {% if dtf %}
+                        <div class="field-label">Distinguishes from siblings</div>
+                        <table class="table table-sm mb-2" style="font-size:.78rem;">
+                            <tbody>
+                            {% for sibling, how in dtf.items() %}
+                            <tr>
+                                <td style="font-family:monospace; color:#8b5cf6; width:35%;">{{ sibling }}</td>
+                                <td style="color:#475569;">{{ how }}</td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                        {% endif %}
+                        {% endif %}
+
+                        {% if e.differentia_rationale %}
+                        <div class="rationale-box" data-translatable="rat_step3">
+                            <strong data-i18n="det.llm_rationale">LLM rationale:</strong>
+                            <span class="translatable-text">{{ e.differentia_rationale }}</span>
+                        </div>
+                        {% endif %}
+                        {{ expert_panel('step3') }}
+                    </div>
+                </div>
+
+                <!-- Step 4: Necessary Parts -->
+                {# An empty list is a completed step (e.g. functionally-defined genera have no parts); only NULL means not yet run. #}
+                {% set _parts = e.necessary_parts if e.necessary_parts is iterable and e.necessary_parts is not string else [] %}
+                {% set _cands = e.candidate_parts if e.candidate_parts is iterable and e.candidate_parts is not string else [] %}
+                <div class="step-card step-4{% if e.necessary_parts is not none %} collapsed{% endif %}" id="step-card-4">
+                    <div class="step-header" onclick="toggleStep(4)">
+                        <span class="step-num">4</span>
+                        <span class="step-name" data-i18n="det.step4">Necessary Parts</span>
+                        {% if e.necessary_parts is not none %}<span class="step-done-badge" data-i18n="det.done">✓ done</span>{% endif %}
+                        <span class="step-summary{% if not _parts %} empty{% endif %}">{% if _parts %}{% for p in _parts %}{{ p.name if p is mapping else p }}{% if not loop.last %}, {% endif %}{% endfor %}{% elif e.necessary_parts is not none %}no necessary parts{% else %}not set{% endif %}{% if _cands %} · {{ _cands|length }} candidate{{ 's' if _cands|length > 1 }}{% endif %}</span>
+                        <span class="step-toggle">▼</span>
+                    </div>
+                    <div class="step-body">
+                        <div id="partsContainer">
+                            {% if e.necessary_parts is iterable and e.necessary_parts is not string %}
+                                {% for part in e.necessary_parts %}
+                                <div class="part-item" data-index="{{ loop.index0 }}">
+                                    <input type="text" class="form-control form-control-sm part-name"
+                                           value="{{ part.name if part is mapping else part }}"
+                                           placeholder="Part name" style="flex:2">
+                                    <input type="text" class="form-control form-control-sm part-parent"
+                                           value="{{ part.parent if part is mapping else 'MaterialArtifact' }}"
+                                           placeholder="Parent class" style="flex:1">
+                                    <select class="form-select form-select-sm part-relation" style="flex:2">
+                                        <option value="hasComponentPartAtAllTimes"
+                                            {% if part is mapping and part.relation == 'hasComponentPartAtAllTimes' %}selected{% endif %}>
+                                            hasComponentPartAtAllTimes
+                                        </option>
+                                        <option value="hasComponentPartAtSomeTime"
+                                            {% if part is mapping and part.relation == 'hasComponentPartAtSomeTime' %}selected{% endif %}>
+                                            hasComponentPartAtSomeTime
+                                        </option>
+                                    </select>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="removePart(this)">×</button>
+                                    <textarea class="form-control form-control-sm part-quote" rows="1"
+                                        placeholder="source_quote — verbatim text from a Source Definition naming this part">{{ part.source_quote if part is mapping else '' }}</textarea>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="d-flex gap-2 align-items-center mt-2 flex-wrap">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="addPart()">
+                                + Add Part
+                            </button>
+                            <span class="text-muted" style="font-size:0.72rem;">
+                                Consider part-whole relations beyond subsumption:
+                                <code style="font-size:0.68rem;">hasComponentPartAtAllTimes</code> (universal, structurally essential)
+                                · <code style="font-size:0.68rem;">hasComponentPartAtSomeTime</code> (contingent, optional component)
+                            </span>
+                        </div>
+                        {% if e.parts_rationale %}
+                        <div class="rationale-box" data-translatable="rat_step4">
+                            <strong data-i18n="det.llm_rationale">LLM rationale:</strong>
+                            <span class="translatable-text">{{ e.parts_rationale }}</span>
+                        </div>
+                        {% endif %}
+                        <!-- Candidate parts: triangulated tertiary findings not yet vetted as
+                             genus-wide — never fed to OWL generation until promoted by a reviewer. -->
+                        {% if _cands %}
+                        <div class="mt-3 p-2" style="border:1px dashed #fcd34d; border-radius:6px; background:#fffbeb;">
+                            <div class="field-label" style="color:#92400e;">Candidate parts (unconfirmed)</div>
+                            <div class="text-muted mb-2" style="font-size:0.72rem;">Triangulated findings not yet confirmed as genus-wide. Not exported until promoted.</div>
+                            {% for cp in _cands %}
+                            <div class="d-flex gap-2 align-items-start mb-2" style="font-size:0.8rem;">
+                                <div class="flex-grow-1">
+                                    <span class="fw-semibold">{{ cp.name if cp is mapping else cp }}</span>
+                                    {% if cp is mapping and cp.source_quote %}
+                                    <div class="text-muted fst-italic" style="font-size:0.74rem;">“{{ cp.source_quote }}”</div>
+                                    {% endif %}
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" style="font-size:0.7rem; padding:0.05rem 0.45rem; white-space:nowrap;"
+                                        {# single-quoted: tojson escapes ' but emits raw " #}
+                                        onclick='promoteCandidatePart({{ (cp.name if cp is mapping else cp) | tojson }}, {{ (cp.source_quote if cp is mapping else "") | tojson }})'>
+                                    Promote
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {{ expert_panel('step4') }}
+                    </div>
+                </div>
+
+                <!-- Step 5: Process Participation Signature -->
+                {% set _sig = e.process_signature if e.process_signature is mapping else {} %}
+                {% set _pv_new = unvetted_participants | rejectattr('grandfathered') | list %}
+                <div class="step-card step-5{% if e.process_signature and not _pv_new %} collapsed{% endif %}" id="step-card-5">
+                    <div class="step-header" onclick="toggleStep(5)">
+                        <span class="step-num">5</span>
+                        <span class="step-name" data-i18n="det.step5">Process Participation Signature ⟨I, O, T⟩</span>
+                        {% if e.process_signature %}<span class="step-done-badge" data-i18n="det.done">✓ done</span>{% endif %}
+                        {% if unvetted_participants %}<span class="step-done-badge" style="background:#fef3c7;color:#92400e;" title="Participant type(s) not in COPI vocabulary">⚠ {{ unvetted_participants|length }} not in vocab</span>{% endif %}
+                        <span class="step-summary{% if not _sig %} empty{% endif %}">{% if _sig %}{% for i in _sig.get('inputs') or [] %}{{ i.type if i is mapping else i }}{% if not loop.last %} + {% endif %}{% else %}∅{% endfor %} → {% for o in _sig.get('outputs') or [] %}{{ o.type if o is mapping else o }}{% if not loop.last %} + {% endif %}{% else %}∅{% endfor %}{% else %}not set{% endif %}</span>
+                        <span class="step-toggle">▼</span>
+                    </div>
+                    <div class="step-body">
+                        {% set sig = e.process_signature if e.process_signature is mapping else {} %}
+                        {% if unvetted_participants %}
+                        <div class="mb-3 p-2" style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;font-size:0.8rem;">
+                            <div class="fw-semibold" style="color:#92400e;">⚠ Participant type(s) not in COPI vocabulary</div>
+                            <div class="mt-1">
+                                {% for p in unvetted_participants %}<code class="me-2">{{ p.name }}</code>{% if p.grandfathered %}<span class="text-muted me-2" style="font-size:0.7rem;">(already published — grandfathered)</span>{% endif %}{% endfor %}
+                            </div>
+                            <div class="text-muted mt-1" style="font-size:0.74rem;">
+                                Participant types are hand-authored in <code>copi-vocab</code>, not produced by the pipeline.
+                                Replace each with an existing vocab type, redirect it to a BFO / IOF-Core class in <code>copi-iri-map.tsv</code>,
+                                or add it to <code>copi-vocab.ttl</code> first.
+                                {% if _pv_new %}<strong>This entry cannot be saved as validated until then.</strong>{% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% set _gaps = sig.get('participant_vocabulary_gaps') or [] %}
+                        {% if _gaps %}
+                        <div class="mb-3 p-2" style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:6px;font-size:0.8rem;">
+                            <div class="fw-semibold" style="color:#334155;">Vocabulary gaps reported by the LLM</div>
+                            <div class="text-muted mb-1" style="font-size:0.72rem;">The signature uses the broader type; decide whether copi-vocab needs a narrower one.</div>
+                            {% for g in _gaps %}{% if g is mapping %}
+                            <div class="mt-1">
+                                <strong>{{ g.needed }}</strong>
+                                <span class="text-muted">→ used <code>{{ g.used_instead }}</code>{% if g.bfo_category %} · {{ g.bfo_category }}{% endif %}</span>
+                                {% if g.why_no_listed_type_fits %}<div class="text-muted" style="font-size:0.74rem;">{{ g.why_no_listed_type_fits }}</div>{% endif %}
+                            </div>
+                            {% endif %}{% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="field-label">Inputs (I)</div>
+                                <textarea class="form-control" id="sig_inputs" rows="3"
+                                    placeholder='[{"type": "LiquidPortion", "count": 1}]'
+                                >{{ sig.get('inputs', [])|tojson if sig else '[]' }}</textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="field-label">Outputs (O)</div>
+                                <textarea class="form-control" id="sig_outputs" rows="3"
+                                    placeholder='[{"type": "LiquidPortion", "count": 1}]'
+                                >{{ sig.get('outputs', [])|tojson if sig else '[]' }}</textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="field-label">Transformation (T)</div>
+                                <input type="text" class="form-control" id="sig_transformation"
+                                       value="{{ sig.get('transformation', '') if sig else '' }}"
+                                       placeholder="e.g., mechanical energy added">
+                            </div>
+                        </div>
+                        {% if sig.get('rationale') %}
+                        <div class="rationale-box" data-translatable="rat_step5">
+                            <strong data-i18n="det.llm_rationale">LLM rationale:</strong>
+                            <span class="translatable-text">{{ sig.rationale }}</span>
+                        </div>
+                        {% endif %}
+                        {{ expert_panel('step5') }}
+                    </div>
+                </div>
+
+                <div class="section-title">More</div>
+
+                <!-- Alternative Labels (editable skos:altLabel + automatic label aggregation) -->
+                {% set alt_arr = e.alt_labels if e.alt_labels is iterable and e.alt_labels is not string else [] %}
+                <div class="step-card collapsed" id="altLabelsCard">
+                    <div class="step-header" onclick="toggleCard('altLabelsCard')">
+                        <span class="step-name">Alternative labels</span>
+                        <span class="step-summary{% if not alt_arr %} empty{% endif %}">{{ alt_arr | join(', ') if alt_arr else 'none' }}{% if near_match_labels %} · {{ near_match_labels|length }} near match{{ 'es' if near_match_labels|length > 1 }} to check{% endif %}</span>
+                        <span class="step-toggle">▼</span>
+                    </div>
+                    <div class="step-body">
+                        <div class="field-label">Synonyms / alternative labels (comma-separated) <span class="text-muted fw-normal" style="text-transform:none;letter-spacing:0;">— skos:altLabel</span></div>
+                        <input type="text" class="form-control" id="alt_labels"
+                               value="{{ alt_arr | join(', ') }}"
+                               placeholder="e.g. centrifugal pump, rotodynamic pump, bomba centrífuga">
+                        <div class="form-text text-muted" style="font-size:0.75rem;">
+                            Language auto-detected on export (PT if the label contains accents, EN otherwise).
+                        </div>
+
+                        {% if included_variants or near_match_labels %}
+                        <div class="field-label mt-3">Label aggregation (source terms merged into this cluster)</div>
+                        {% if included_variants %}
+                        <p class="mb-1" style="font-size:0.75rem; color:#166534; font-weight:500;">
+                          Merged automatically (hyphen/space variants):
+                        </p>
+                        <ul class="list-unstyled mb-2" style="font-size:0.82rem;">
+                          {% for m in included_variants %}
+                          <li class="d-flex align-items-baseline gap-2 mb-1">
+                            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#16a34a; flex-shrink:0;"></span>
+                            <code style="color:#0f172a;">{{ m.label }}</code>
+                            <span class="text-muted" style="font-size:0.72rem;">
+                              — {{ m.sources | join(", ") }}{% if m.count > 1 %} ({{ m.count }} terms){% endif %}
+                            </span>
+                          </li>
+                          {% endfor %}
+                        </ul>
+                        {% endif %}
+                        {% if near_match_labels %}
+                        <p class="mb-1" style="font-size:0.75rem; color:#92400e; font-weight:500;">
+                          Not yet included — normalize to the same label, but the spelling isn't covered by the variant rules.
+                          Check whether they are equivalent and consider re-enriching.
+                        </p>
+                        <ul class="list-unstyled mb-0" style="font-size:0.82rem;">
+                          {% for m in near_match_labels %}
+                          <li class="d-flex align-items-baseline gap-2 mb-1">
+                            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#d97706; flex-shrink:0;"></span>
+                            <code style="color:#0f172a;">{{ m.label }}</code>
+                            <span class="text-muted" style="font-size:0.72rem;">
+                              — {{ m.sources | join(", ") }}{% if m.count > 1 %} ({{ m.count }} terms){% endif %}
+                            </span>
+                          </li>
+                          {% endfor %}
+                        </ul>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- CFIHOS / DEXPI Qualities -->
+                {% set selected_qualities = e.qualities if e.qualities is iterable and e.qualities is not string else [] %}
+                {% set selected_names = selected_qualities | map(attribute='name') | list %}
+                <div class="step-card collapsed" id="qualitiesCard">
+                    <div class="step-header" onclick="toggleCard('qualitiesCard')">
+                        <span class="step-name">Properties as BFO qualities</span>
+                        <span class="step-summary{% if not cfihos_properties %} empty{% endif %}">{% if cfihos_properties %}{{ selected_names|length }} of {{ cfihos_properties|length }} selected{% else %}no CFIHOS/DEXPI properties{% endif %}</span>
+                        <span class="step-toggle">▼</span>
+                    </div>
+                    <div class="step-body">
+                    {% if cfihos_properties %}
+                        <div class="form-text mb-2" style="font-size:0.8rem; color:#374151;">
+                            Select which CFIHOS/DEXPI properties inhere in every instance of <strong>{{ e.cluster_label | title }}</strong> as <code>bfo:Quality</code> subclasses.
+                        </div>
+                        <div id="qualitiesContainer" style="max-height:260px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:0.5rem;">
+                        {% for prop in cfihos_properties %}
+                        <label class="d-flex align-items-start gap-2 py-1" style="font-size:0.83rem; cursor:pointer; border-bottom:1px solid #f1f5f9;">
+                            <input type="checkbox" class="quality-check mt-1"
+                                   data-name="{{ prop.name }}"
+                                   data-unit="{{ prop.unit or '' }}"
+                                   data-def="{{ (prop.definition or '') | replace('"', '&quot;') }}"
+                                   {% if prop.name in selected_names %}checked{% endif %}>
+                            <div>
+                                <strong style="font-family:monospace;">{{ prop.name }}</strong>
+                                {% if prop.unit %}<span class="badge bg-secondary ms-1" style="font-size:0.65rem;">{{ prop.unit }}</span>{% endif %}
+                                {% if prop.datatype %}<span class="badge bg-light text-muted ms-1" style="font-size:0.65rem;">{{ prop.datatype }}</span>{% endif %}
+                                {% if prop.definition %}<div class="text-muted" style="font-size:0.75rem; margin-top:0.1rem;">{{ prop.definition[:120] }}{% if prop.definition|length > 120 %}…{% endif %}</div>{% endif %}
+                            </div>
+                        </label>
+                        {% endfor %}
+                        </div>
+                        <div class="form-text mt-1" style="font-size:0.75rem; color:var(--muted);">
+                            Each selected property → <code>:{{ e.cluster_label | title | replace(' ', '') }}Quality ⊑ bfo:Quality, inheres in :{{ e.cluster_label | title | replace(' ', '') }}</code>
+                        </div>
+                    {% else %}
+                        <div class="text-muted" style="font-size:0.83rem; font-style:italic;">
+                            No CFIHOS/DEXPI properties found for this cluster.
+                        </div>
+                    {% endif %}
+                    </div>
+                </div>
+
+                <!-- Custom Axioms -->
+                {% set axioms = e.custom_axioms if e.custom_axioms is iterable and e.custom_axioms is not string else [] %}
+                <div class="step-card{% if not axioms %} collapsed{% endif %}" id="customAxiomsCard">
+                    <div class="step-header" onclick="toggleCard('customAxiomsCard')">
+                        <span class="step-name">Custom axioms</span>
+                        <span class="step-summary{% if not axioms %} empty{% endif %}">{% if axioms %}{{ axioms|length }} axiom{{ 's' if axioms|length > 1 }}{% else %}none{% endif %}</span>
+                        <span class="step-toggle">▼</span>
+                    </div>
+                    <div class="step-body">
+                        <div class="form-text mb-2" style="font-size:0.8rem; color:#374151;">
+                            Axioms not produced by the pipeline. Each is appended verbatim as an <code>rdfs:subClassOf</code> restriction on <strong>{{ e.cluster_label | title }}</strong>.
+                        </div>
+                        <div id="customAxiomsContainer">
+                        {% for ax in axioms %}
+                        <div class="custom-axiom-row mb-2 p-2" style="border:1px solid var(--border); border-radius:6px; background:#fafafa;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="field-label mb-0">Natural language</span>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        style="font-size:0.68rem; padding:.1rem .4rem;"
+                                        onclick="removeAxiom(this)">✕</button>
+                            </div>
+                            <input type="text" class="form-control form-control-sm ax-nl mb-1"
+                                   value="{{ ax.nl or '' }}" placeholder="e.g. every well has a wellhead">
+                            <div class="field-label mb-0">Turtle restriction block</div>
+                            <textarea class="form-control form-control-sm ax-turtle"
+                                      rows="2" style="font-family:monospace; font-size:0.78rem;"
+                                      placeholder="[ owl:onProperty :hasPart ; owl:someValuesFrom :Wellhead ]">{{ ax.turtle or '' }}</textarea>
+                        </div>
+                        {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1"
+                                onclick="addAxiomRow()" style="font-size:0.78rem;">+ Add axiom</button>
+                        <div class="form-text mt-1" style="font-size:0.75rem; color:var(--muted);">
+                            Write the restriction block in Turtle syntax (without the leading <code>rdfs:subClassOf</code>).
+                            Example: <code>[ owl:onProperty :hasPart ; owl:someValuesFrom :Wellhead ]</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cross-Standard Divergences -->
+                <div class="step-card collapsed" id="divergenceCard">
+                    <div class="step-header" onclick="toggleCard('divergenceCard')">
+                        <span class="step-name">Cross-standard divergences</span>
+                        <span id="divCount" class="step-summary empty">none detected yet</span>
+                        <span class="step-toggle">▼</span>
+                    </div>
+                    <div class="step-body" id="divCardBody">
+                        <div class="d-flex gap-2 mb-3 flex-wrap">
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    onclick="runAutoDetect()" id="btnAutoDetect"
+                                    style="font-size:0.78rem;">Detect divergences</button>
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    onclick="runLlmDetect()" id="btnLlmDetect"
+                                    style="font-size:0.78rem;">LLM-detect</button>
+                            <a href="/enrich/divergences" class="btn btn-sm btn-outline-secondary"
+                               style="font-size:0.78rem;">Full matrix</a>
+                        </div>
+                        <div id="divResults">
+                            <p class="text-muted" style="font-size:0.83rem; font-style:italic;">
+                                Click "Detect divergences" to analyse cross-standard disagreements for this cluster.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Sidebar: evidence only (read-mostly) -->
+            <div class="col-lg-4">
+              <div class="evidence-sidebar">
+
+                <!-- Source Definitions -->
+                <div class="mb-4">
+                    <div class="section-title" style="margin-top:0;">
+                        <span data-i18n="det.src_defs">Source Definitions</span> ({{ definitions|length }})
+                    </div>
+                    {% if e.symbol_path %}
+                    <div class="mb-2 text-center" style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:0.5rem;">
+                        <img src="/static/isa5_1/{{ e.symbol_path }}"
+                             alt="P&amp;ID symbol for {{ e.cluster_label }}"
+                             style="max-height:90px; max-width:100%; object-fit:contain;"
+                             title="ISA 5.1-2022 P&amp;ID symbol"
+                             onerror="this.parentElement.style.display='none'">
+                    </div>
+                    {% endif %}
+                    {% for d in definitions %}
+                    <div class="source-def" data-translatable="def_{{ loop.index }}" style="position:relative;">
+                        <button onclick="excludeDefinition({{ d.id }}, true, this)"
+                                title="Remove this definition (out of context)"
+                                style="position:absolute;top:0.4rem;right:0.4rem;background:none;border:none;cursor:pointer;color:#94a3b8;font-size:0.85rem;line-height:1;padding:0.1rem 0.2rem;border-radius:3px;"
+                                onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#94a3b8'">&times;</button>
+                        <div class="source-name">
+                            {% if d.source_uri %}
+                                <a href="{{ d.source_uri }}" target="_blank" rel="noopener"
+                                   style="text-decoration:none; color:inherit;">{{ d.source }}{% if d.source_version %} {{ d.source_version }}{% endif %} ↗</a>
+                            {% else %}
+                                {{ d.source }}{% if d.source_version %} {{ d.source_version }}{% endif %}
+                            {% endif %}
+                        </div>
+                        <div class="fw-semibold">{{ d.term }}{% if d.term_type %} <span class="text-muted fw-normal" style="font-size:0.78rem;">— {{ d.term_type }}</span>{% endif %}</div>
+                        {% if d.definition %}
+                        <div class="mt-1 translatable-text">{{ d.definition }}</div>
+                        {% else %}
+                        <div class="mt-1 text-muted fst-italic" style="font-size:0.8rem;">
+                            Definition text hidden (copyrighted standard) — sign in to view, or follow the source link above.
+                        </div>
+                        {% endif %}
+                        {% if d.properties %}
+                        <div class="mt-1 text-muted" style="font-size:0.75rem;">
+                            {% for k, v in d.properties.items() %}
+                                <span>{{ k }}: {{ v }}</span>{% if not loop.last %} · {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    {% if excluded_definitions %}
+                    <details style="margin-top:0.5rem;">
+                        <summary style="font-size:0.75rem; color:#94a3b8; cursor:pointer;">{{ excluded_definitions|length }} excluded definition(s)</summary>
+                        {% for d in excluded_definitions %}
+                        <div class="source-def mt-1" style="opacity:0.45; position:relative;">
+                            <button onclick="excludeDefinition({{ d.id }}, false, this)"
+                                    title="Restore this definition"
+                                    style="position:absolute;top:0.4rem;right:0.4rem;background:none;border:none;cursor:pointer;color:#94a3b8;font-size:0.75rem;padding:0.1rem 0.2rem;border-radius:3px;">↩</button>
+                            <div class="source-name">{{ d.source }}{% if d.source_version %} {{ d.source_version }}{% endif %}</div>
+                            <div class="fw-semibold">{{ d.term }}</div>
+                            <div class="mt-1" style="font-size:0.8rem;">{{ (d.definition or '')[:120] }}{% if (d.definition or '')|length > 120 %}…{% endif %}</div>
+                        </div>
+                        {% endfor %}
+                    </details>
+                    {% endif %}
+                </div>
+
+                <!-- Layered-source provenance: every source the enrichment cites, with where
+                     it came from (term in terms.db or URL) and the quote it contributed. -->
+                {% if e.source_definitions_used is iterable and e.source_definitions_used is not string
+                      and e.source_definitions_used | selectattr('tier', 'defined') | list %}
+                {% set _prov = e.source_definitions_used | selectattr('tier', 'defined') | list %}
+                <div class="mb-4">
+                    <div class="section-title" style="margin-top:0;">
+                        Provenance tiers ({{ _prov|length }})
+                        {% if e.secondary_coverage %}
+                        <span class="badge ms-1" style="background:{{ '#dcfce7' if e.secondary_coverage == 'full' else ('#fef3c7' if e.secondary_coverage == 'partial' else '#f1f5f9') }}; color:{{ '#166534' if e.secondary_coverage == 'full' else ('#92400e' if e.secondary_coverage == 'partial' else '#64748b') }}; font-weight:500; text-transform:none; letter-spacing:normal;"
+                              title="Secondary-source coverage — a pipeline-health signal, not a quality score against any reference definition">
+                            secondary coverage: {{ e.secondary_coverage }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="text-muted mb-2" style="font-size:0.72rem;">
+                        Sources the pipeline cited while building this entry. <em>Verbatim</em> = the quote was copied word-for-word from that source; <em>summary</em> = paraphrased.
+                    </div>
+                    {% for p in _prov %}
+                    {% if p is mapping %}
+                    <div class="source-def" style="font-size:0.8rem;">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="badge" style="background:{{ '#2563eb' if p.tier == 'primary' else ('#64748b' if p.tier == 'secondary' else '#d97706') }}; font-weight:500;">{{ p.tier }}</span>
+                            <span class="fw-semibold">
+                                {% if p.url %}<a href="{{ p.url }}" target="_blank" rel="noopener" style="text-decoration:none;">{{ p.source }} ↗</a>
+                                {% else %}{{ p.source }}{% endif %}
+                            </span>
+                            {% if p.term %}
+                            <a href="/search?q={{ p.term | urlencode }}" target="_blank" class="text-decoration-none" style="color:#475569;" title="Open this term in the terms database">{{ p.term }}</a>
+                            {% endif %}
+                        </div>
+                        <div class="text-muted mt-1" style="font-size:0.7rem;">
+                            {{ (p.source_type or '') | replace('_', ' ') }}{% if p.citation_mode %} · {{ p.citation_mode }}{% endif %}{% if p.access and p.access != 'raw_fetch' %} · {{ p.access | replace('_', ' ') }}{% endif %}
+                            {% if p.categories_covered %}
+                            <div class="mt-1">{% for c in p.categories_covered %}<span class="badge bg-light text-secondary border me-1" style="font-weight:400;">{{ c }}</span>{% endfor %}</div>
+                            {% endif %}
+                        </div>
+                        {% if p.quote %}
+                          {% if request.state.user %}
+                          {% if p.quote|length > 180 %}
+                          <details class="mt-1">
+                              <summary style="cursor:pointer; color:#334155; font-style:italic;">“{{ p.quote[:180] }}…”</summary>
+                              <div class="mt-1" style="color:#334155; font-style:italic; white-space:pre-wrap;">“{{ p.quote }}”</div>
+                          </details>
+                          {% else %}
+                          <div class="mt-1" style="color:#334155; font-style:italic;">“{{ p.quote }}”</div>
+                          {% endif %}
+                          {% else %}
+                          <div class="mt-1 text-muted fst-italic" style="font-size:0.72rem;">Quote hidden — sign in to view.</div>
+                          {% endif %}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Linked Competency Questions -->
+                {% if linked_cqs %}
+                <div class="mb-4">
+                    <div class="section-title" style="margin-top:0;">Linked competency questions</div>
+                    <ul class="list-unstyled mb-0" style="font-size:0.82rem;">
+                        {% for cq in linked_cqs %}
+                        <li class="d-flex align-items-start gap-2 mb-1">
+                            <span class="badge text-bg-{{ 'success' if cq.status == 'answered' else ('warning' if cq.status == 'partial' else 'secondary') }} mt-1" style="font-size:0.65rem; flex-shrink:0;">{{ cq.status }}</span>
+                            <span>{{ cq.text }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <a href="/requirements" class="text-decoration-none" style="font-size:0.75rem; color:#6b7280;">Manage all CQs →</a>
+                </div>
+                {% endif %}
+
+                <!-- OWL Preview -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="section-title" style="margin:0;">OWL/Turtle preview</div>
+                        <a href="/enrich/{{ e.id }}/turtle" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;">Download .ttl</a>
+                    </div>
+                    <div class="text-muted my-1" style="font-size:0.7rem;">
+                        Numeric <code>COPI_*</code> IRIs from <code>copi-iri-map.tsv</code>, with the readable name as a trailing comment. Names not yet in the map stay readable.
+                    </div>
+                    <div class="owl-preview" id="owlPreview">Loading...</div>
+                </div>
+
+                <!-- Metadata -->
+                <div class="text-muted" style="font-size: 0.72rem; line-height:1.6;">
+                    <div>ID {{ e.id }}{% if e.llm_model %} · {{ e.llm_model }}{% endif %}</div>
+                    <div>Created {{ (e.created_at or '')[:16] | replace('T',' ') }}</div>
+                    <div>Updated {{ (e.updated_at or '')[:16] | replace('T',' ') }}</div>
+                    {% if e.last_edited_by %}
+                    <div>Last edited by {{ e.last_edited_by }}{% if e.last_edited_at %} · {{ e.last_edited_at[:16]|replace('T',' ') }}{% endif %}</div>
+                    {% endif %}
+                </div>
+              </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        // Card collapse / expand — only the header toggles, so selecting text in a body never collapses it
+        function toggleCard(id) {
+            const card = document.getElementById(id);
+            if (!card) return false;
+            const expanding = card.classList.contains('collapsed');
+            card.classList.toggle('collapsed');
+            return expanding;
+        }
+        function toggleStep(num) {
+            if (toggleCard('step-card-' + num)) {
+                fetch('/enrich/{{ e.id }}/event', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({event_type: 'step_focus', event_detail: {step_number: num}}),
+                }).catch(() => {});
+            }
+        }
+
+        // Gap fields only matter when the process is not anchored in an operation.
+        function syncGapFields() {
+            const pp = document.getElementById('process_parent');
+            const fields = document.getElementById('gapFields');
+            if (pp && fields) fields.hidden = pp.value !== 'PlannedProcess';
+        }
+
+        // ── Unsaved-changes tracking ──────────────────────────────────────
+        // Comment threads and divergence resolutions save themselves, so they don't count.
+        let _dirty = false;
+        function markDirty() {
+            if (_dirty) return;
+            _dirty = true;
+            const ind = document.getElementById('unsaved-indicator');
+            if (ind) ind.hidden = false;
+        }
+        function clearDirty() {
+            _dirty = false;
+            const ind = document.getElementById('unsaved-indicator');
+            if (ind) ind.hidden = true;
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const main = document.querySelector('.col-lg-8');
+            const sidebar = document.querySelector('.evidence-sidebar');
+            [main, sidebar].forEach(root => {
+                if (!root) return;
+                ['input', 'change'].forEach(evt => root.addEventListener(evt, function(ev) {
+                    if (ev.target.closest('.ann-thread, #divResults')) return;
+                    markDirty();
+                }));
+            });
+        });
+        window.addEventListener('beforeunload', function(ev) {
+            if (_dirty) { ev.preventDefault(); ev.returnValue = ''; }
+        });
+        document.addEventListener('keydown', function(ev) {
+            if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === 's' && document.getElementById('save-btn')) {
+                ev.preventDefault();
+                saveAll();
+            }
+        });
+
+        // Load OWL preview
+        async function loadOwlPreview() {
+            try {
+                const resp = await fetch('/enrich/{{ e.id }}/turtle');
+                const text = await resp.text();
+                document.getElementById('owlPreview').textContent = text;
+            } catch (e) {
+                document.getElementById('owlPreview').textContent = '# Error loading preview';
+            }
+        }
+        loadOwlPreview();
+
+        // Parts management
+        function addPart() {
+            const container = document.getElementById('partsContainer');
+            const idx = container.children.length;
+            const html = `
+                <div class="part-item" data-index="${idx}">
+                    <input type="text" class="form-control form-control-sm part-name"
+                           placeholder="Part name" style="flex:2">
+                    <input type="text" class="form-control form-control-sm part-parent"
+                           value="MaterialArtifact" placeholder="Parent class" style="flex:1">
+                    <select class="form-select form-select-sm part-relation" style="flex:2">
+                        <option value="hasComponentPartAtAllTimes" selected>hasComponentPartAtAllTimes</option>
+                        <option value="hasComponentPartAtSomeTime">hasComponentPartAtSomeTime</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-danger" onclick="removePart(this)">×</button>
+                    <textarea class="form-control form-control-sm part-quote" rows="1"
+                        placeholder="source_quote — verbatim text from a Source Definition naming this part"></textarea>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+            markDirty();
+        }
+
+        function removePart(btn) {
+            btn.closest('.part-item').remove();
+            markDirty();
+        }
+
+        // Copies a candidate_parts finding into the Step 4 editor. Does not write
+        // to the DB by itself — the reviewer still reviews name/quote and clicks Save.
+        function promoteCandidatePart(name, quote) {
+            addPart();
+            const item = document.querySelector('#partsContainer .part-item:last-child');
+            item.querySelector('.part-name').value = name || '';
+            item.querySelector('.part-quote').value = quote || '';
+            document.getElementById('step-card-4')?.classList.remove('collapsed');
+        }
+
+        function collectParts() {
+            const parts = [];
+            document.querySelectorAll('.part-item').forEach(item => {
+                const name = item.querySelector('.part-name').value.trim();
+                if (name) {
+                    parts.push({
+                        name: name,
+                        parent: item.querySelector('.part-parent').value.trim() || 'MaterialArtifact',
+                        relation: item.querySelector('.part-relation').value,
+                        source_quote: item.querySelector('.part-quote').value.trim() || null,
+                    });
+                }
+            });
+            return parts;
+        }
+
+        // Save all changes
+        async function saveAll() {
+            const formData = new FormData();
+
+            formData.append('function_name', document.getElementById('function_name').value);
+            formData.append('process_name', document.getElementById('process_name').value);
+            formData.append('process_parent', document.getElementById('process_parent').value);
+            const gapKind = document.getElementById('gap_kind')?.value || '';
+            formData.append('core_operation_gap', gapKind ? JSON.stringify({
+                kind: gapKind,
+                nearest_operation: document.getElementById('gap_nearest').value.trim() || null,
+                rationale: document.getElementById('gap_rationale').value.trim(),
+            }) : '');
+            formData.append('differentia_expression', document.getElementById('differentia_expression')?.value || '');
+            formData.append('differentia_nl', document.getElementById('differentia_nl')?.value || '');
+            formData.append('genus', document.getElementById('genus')?.value || '');
+            formData.append('genus_bfo_root', document.querySelector('input[name="genus_bfo_root"]:checked')?.value || '');
+            formData.append('axiom_mode', document.querySelector('input[name="axiom_mode"]:checked')?.value || 'necessary');
+            formData.append('primitive_rationale', document.getElementById('primitive_rationale').value);
+            formData.append('label_pt', document.getElementById('label_pt')?.value || '');
+            formData.append('nl_definition_en', document.getElementById('nl_definition_en').value);
+            formData.append('nl_definition_pt', document.getElementById('nl_definition_pt').value);
+            formData.append('semiformal_axiom', document.getElementById('semiformal_axiom').value);
+            formData.append('fol_axiom', document.getElementById('fol_axiom').value);
+            formData.append('reviewer_notes', document.getElementById('reviewer_notes').value);
+            formData.append('primary_definition_conflict', document.getElementById('primary_definition_conflict').value);
+            formData.append('status', document.getElementById('status').value);
+            formData.append('disjoint_with', document.getElementById('disjoint_with').value);
+            formData.append('necessary_parts', JSON.stringify(collectParts()));
+            const secondNotes = document.getElementById('second_reviewer_notes');
+            if (secondNotes) formData.append('second_reviewer_notes', secondNotes.value);
+            formData.append('alt_labels', document.getElementById('alt_labels')?.value || '');
+            formData.append('qualities', JSON.stringify(collectQualities()));
+            formData.append('custom_axioms', JSON.stringify(collectCustomAxioms()));
+            formData.append('is_role', document.getElementById('is_role')?.checked ? '1' : '0');
+            formData.append('role_bearer', document.getElementById('role_bearer')?.value || '');
+            formData.append('role_bearer_rationale', document.getElementById('role_bearer_rationale')?.value || '');
+
+            // Collect per-step expert reviews
+            for (const step of ['step1','step2','step3','step4','step5','axiom_mode']) {
+                const statusEl = document.getElementById(`expert_${step}_status`);
+                const noteEl   = document.getElementById(`expert_${step}_note`);
+                if (statusEl) formData.append(`expert_${step}_status`, statusEl.value);
+                if (noteEl)   formData.append(`expert_${step}_note`,   noteEl.value);
+            }
+
+            // Process signature
+            try {
+                const sig = {
+                    inputs: JSON.parse(document.getElementById('sig_inputs').value || '[]'),
+                    outputs: JSON.parse(document.getElementById('sig_outputs').value || '[]'),
+                    transformation: document.getElementById('sig_transformation').value,
+                };
+                formData.append('process_signature', JSON.stringify(sig));
+            } catch (e) {
+                alert('Invalid JSON in process signature inputs/outputs');
+                return;
+            }
+
+            // Stale-write detection: send the timestamp the page was loaded with
+            formData.append('loaded_at', document.getElementById('loaded_at')?.value || '');
+
+            try {
+                const enrichmentId = '{{ e.id }}';
+                let resp = await fetch(`/enrich/${enrichmentId}/update`, { method: 'POST', body: formData });
+                if (resp.status === 409) {
+                    const data = await resp.json();
+                    const who = data.last_edited_by || 'someone else';
+                    const when = data.last_edited_at || '';
+                    const ok = confirm(
+                        `This record was last modified by ${who} at ${when}.\nSave anyway and overwrite their changes?`
+                    );
+                    if (ok) {
+                        // Re-submit without loaded_at check (pass sentinel)
+                        formData.set('loaded_at', '__force__');
+                        resp = await fetch(`/enrich/${enrichmentId}/update`, { method: 'POST', body: formData });
+                    } else {
+                        return;
+                    }
+                }
+                if (resp && resp.ok) {
+                    // Update loaded_at to the new updated_at so subsequent saves don't conflict
+                    const result = await resp.json();
+                    if (result.updated_at) {
+                        const loadedAtEl = document.getElementById('loaded_at');
+                        if (loadedAtEl) loadedAtEl.value = result.updated_at;
+                    }
+                    // Refresh preview and FOL
+                    loadOwlPreview();
+                    loadFolTheory();
+                    clearDirty();
+                    // Visual feedback (swap classes only, so the translated label is kept)
+                    const btn = document.getElementById('save-btn');
+                    const label = btn.innerHTML;
+                    btn.textContent = '✓ Saved';
+                    btn.classList.replace('btn-primary', 'btn-success');
+                    setTimeout(() => {
+                        btn.innerHTML = label;
+                        btn.classList.replace('btn-success', 'btn-primary');
+                    }, 2000);
+                } else if (resp) {
+                    // Validators return 422 with a {detail} explaining what to fix — show it.
+                    let detail = '';
+                    try { const d = await resp.json(); detail = typeof d.detail === 'string' ? d.detail : JSON.stringify(d.detail); } catch (_) {}
+                    alert('Save failed' + (detail ? ':\n\n' + detail : ` (HTTP ${resp.status})`));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        function toggleExpert(step, ev) {
+            if (ev) ev.stopPropagation();
+            const body = document.getElementById(`expert_body_${step}`);
+            const icon = document.getElementById(`expert_icon_${step}`);
+            if (body.style.display === 'none') {
+                body.style.display = 'block';
+                icon.textContent = '▾';
+            } else {
+                body.style.display = 'none';
+                icon.textContent = '▸';
+            }
+        }
+
+        // ── Qualities collector ───────────────────────────────────────────
+        function collectQualities() {
+            const checks = document.querySelectorAll('.quality-check:checked');
+            return Array.from(checks).map(cb => ({
+                name:       cb.dataset.name,
+                unit:       cb.dataset.unit || '',
+                definition: cb.dataset.def  || '',
+            }));
+        }
+
+        // ── Custom axioms ─────────────────────────────────────────────────
+        function collectCustomAxioms() {
+            const rows = document.querySelectorAll('.custom-axiom-row');
+            return Array.from(rows)
+                .map(row => ({
+                    nl:     row.querySelector('.ax-nl').value.trim(),
+                    turtle: row.querySelector('.ax-turtle').value.trim(),
+                }))
+                .filter(ax => ax.turtle);
+        }
+
+        function addAxiomRow() {
+            const container = document.getElementById('customAxiomsContainer');
+            const div = document.createElement('div');
+            div.className = 'custom-axiom-row mb-2 p-2';
+            div.style.cssText = 'border:1px solid var(--border); border-radius:6px; background:#fafafa;';
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="field-label mb-0">Natural language</span>
+                    <button type="button" class="btn btn-xs btn-outline-danger"
+                            style="font-size:0.68rem; padding:.1rem .4rem;"
+                            onclick="removeAxiom(this)">✕</button>
+                </div>
+                <input type="text" class="form-control form-control-sm ax-nl mb-1"
+                       placeholder="e.g. every well has a wellhead">
+                <div class="field-label mb-0">Turtle restriction block</div>
+                <textarea class="form-control form-control-sm ax-turtle" rows="2"
+                          style="font-family:monospace; font-size:0.78rem;"
+                          placeholder="[ owl:onProperty :hasPart ; owl:someValuesFrom :Wellhead ]"></textarea>`;
+            container.appendChild(div);
+            markDirty();
+        }
+
+        function removeAxiom(btn) {
+            btn.closest('.custom-axiom-row').remove();
+            markDirty();
+        }
+
+        // Toggle primitive rationale visibility
+        document.querySelectorAll('input[name="axiom_mode"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                const show = radio.value === 'necessary' || radio.value === 'mixed';
+                document.getElementById('primitiveRationaleGroup').style.display = show ? '' : 'none';
+            });
+        });
+        // Initial state
+        const currentMode = document.querySelector('input[name="axiom_mode"]:checked')?.value;
+        if (currentMode === 'equivalent') {
+            document.getElementById('primitiveRationaleGroup').style.display = 'none';
+        }
+
+        // ── Generated FOL theory panel ────────────────────────────────────
+        async function loadFolTheory() {
+            const panel = document.getElementById('folGenerated');
+            if (!panel) return;
+            try {
+                const resp = await fetch('/enrich/{{ e.id }}/fol');
+                if (!resp.ok) { panel.innerHTML = '<span class="text-muted">Not available yet</span>'; return; }
+                const axioms = await resp.json();
+                if (!axioms || axioms.length === 0) {
+                    panel.innerHTML = '<span class="text-muted">Fill in the steps above to generate axioms.</span>';
+                    return;
+                }
+                const STEP_COLORS = {
+                    'Step 1': '#1d4ed8', 'Step 2': '#7c3aed',
+                    'Step 3': '#b45309', 'Step 4': '#065f46', 'Step 5': '#9f1239'
+                };
+                panel.innerHTML = axioms.map(ax => {
+                    const color = STEP_COLORS[ax.step] || '#374151';
+                    return `<div style="margin-bottom:0.55rem;">` +
+                        `<span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;` +
+                        `letter-spacing:0.06em;color:${color};margin-right:0.5rem;">${ax.step}</span>` +
+                        `<span style="font-size:0.75rem;color:#6b7280;margin-right:0.5rem;">${ax.label}</span>` +
+                        `<br><span style="color:#1e293b;">${ax.fol}</span>` +
+                        (ax.note ? `<br><span style="font-size:0.72rem;color:#6b7280;font-style:italic;">${ax.note}</span>` : '') +
+                        `</div>`;
+                }).join('');
+            } catch(e) {
+                panel.innerHTML = '<span class="text-danger">Error loading FOL</span>';
+            }
+        }
+
+        function toggleFolOverride() {
+            const p = document.getElementById('folOverridePanel');
+            p.style.display = p.style.display === 'none' ? '' : 'none';
+        }
+
+        // Load on page load and after save
+        loadFolTheory();
+        const _origSaveAll = saveAll;
+        // Reload FOL after save
+        const _savedSaveAll = saveAll;
+
+        // ── Re-run modal ──────────────────────────────────────────────────
+        function showRerunModal() {
+            const modal = new bootstrap.Modal(document.getElementById('rerunModal'));
+            modal.show();
+        }
+
+        async function submitRerun() {
+            const btn = document.getElementById('rerunBtn');
+            const prog = document.getElementById('rerunProgress');
+            const err = document.getElementById('rerunError');
+            btn.disabled = true;
+            prog.classList.remove('d-none');
+            err.classList.add('d-none');
+
+            const formData = new FormData();
+
+            try {
+                const resp = await fetch('/enrich/rerun/{{ e.id }}', {method: 'POST', body: formData});
+                if (!resp.ok) {
+                    const data = await resp.json();
+                    throw new Error(data.detail || 'Re-run failed');
+                }
+                const data = await resp.json();
+                window.location.href = data.redirect;
+            } catch(e) {
+                err.textContent = e.message;
+                err.classList.remove('d-none');
+                btn.disabled = false;
+                prog.classList.add('d-none');
+            }
+        }
+
+        // ── Scope toggle ──────────────────────────────────────────────────
+        let _outOfScope = {{ 'true' if out_of_scope else 'false' }};
+        const _clusterLabel = {{ e.cluster_label | tojson }};
+        const _enrichmentId = {{ e.id }};
+
+        async function excludeDefinition(defId, exclude, btn) {
+            const card = btn.closest('.source-def');
+            try {
+                const resp = await fetch(`/enrich/${_enrichmentId}/exclude-definition`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ definition_id: defId, exclude }),
+                });
+                if (!resp.ok) throw new Error(await resp.text());
+                // Reload the page to reflect the change
+                location.reload();
+            } catch (e) {
+                alert('Failed: ' + e.message);
+            }
+        }
+
+        async function toggleScope() {
+            const newState = !_outOfScope;
+            const btn = document.getElementById('scope-btn');
+            btn.disabled = true;
+            try {
+                const fd = new FormData();
+                fd.append('out_of_scope', newState);
+                const r = await fetch(`/enrich/scope/${encodeURIComponent(_clusterLabel)}`, {method:'POST', body:fd});
+                if (!r.ok) throw new Error(await r.text());
+                _outOfScope = newState;
+                btn.textContent = newState ? 'Mark as in scope' : 'Mark as out of scope';
+                location.reload();
+            } catch(e) {
+                alert('Failed to update scope: ' + e.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+
+<!-- Re-run modal -->
+<div class="modal fade" id="rerunModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#1e3a5f; color:white;">
+                <h5 class="modal-title">↺ Re-run Enrichment with Notes</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3" style="font-size:.88rem;">
+                    The LLM will be re-run with the current <strong>reviewer notes</strong>
+                    and <strong>per-step expert feedback</strong> injected into the prompt,
+                    so it can address each point. The existing proposal will be replaced.
+                </p>
+                {% set has_notes = e.reviewer_notes and e.reviewer_notes.strip() %}
+                {% set has_review = e.expert_review and e.expert_review != '{}' %}
+                {% if not has_notes and not has_review %}
+                <div class="alert alert-warning" style="font-size:.84rem;">
+                    No reviewer notes or per-step feedback found. Add notes in the
+                    <strong>Reviewer Notes</strong> field or approve/reject individual steps before re-running.
+                </div>
+                {% else %}
+                <div class="alert alert-info" style="font-size:.84rem;">
+                    {% if has_notes %}<div>📝 General notes will be included.</div>{% endif %}
+                    {% if has_review %}<div>🔍 Per-step expert feedback will be included.</div>{% endif %}
+                </div>
+                {% endif %}
+
+
+                <div id="rerunError" class="alert alert-danger d-none"></div>
+                <div id="rerunProgress" class="d-none">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="spinner-border text-primary" style="width:1rem;height:1rem;"></div>
+                        <span style="font-size:.85rem;">Running enrichment with reviewer context…</span>
+                    </div>
+                    <div class="progress mt-2" style="height:3px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                {% if request.state.user %}
+                <button type="button" class="btn btn-warning btn-sm" id="rerunBtn" onclick="submitRerun()">
+                    ↺ Re-run now
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ ANNOTATIONS ══ -->
+<style>
+.ann-thread {
+  margin-top: 0.75rem;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 0.6rem;
+}
+.ann-toggle-btn {
+  font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: #64748b; cursor: pointer;
+  background: none; border: none; padding: 0;
+  display: flex; align-items: center; gap: 0.4rem;
+  user-select: none;
+}
+.ann-toggle-btn:hover { color: #1e293b; }
+.ann-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; border-radius: 9px; font-size: 0.65rem;
+  font-weight: 700; background: #f59e0b; color: white; padding: 0 4px;
+}
+.ann-badge.zero { background: #e2e8f0; color: #94a3b8; }
+.ann-body { margin-top: 0.5rem; display: none; }
+.ann-body.open { display: block; }
+.ann-item {
+  padding: 0.45rem 0.65rem; border-radius: 6px;
+  background: #f8fafc; border: 1px solid #e2e8f0;
+  margin-bottom: 0.4rem; font-size: 0.82rem;
+}
+.ann-item.resolved { opacity: 0.55; }
+.ann-author { font-weight: 600; color: #1e3a5f; font-size: 0.74rem; }
+.ann-date   { color: #94a3b8; font-size: 0.7rem; margin-left: 0.4rem; }
+.ann-text   { margin-top: 0.2rem; line-height: 1.5; white-space: pre-wrap; }
+.ann-actions { margin-top: 0.3rem; display: flex; gap: 0.5rem; }
+.ann-btn {
+  font-size: 0.68rem; border: none; background: none; cursor: pointer;
+  color: #94a3b8; padding: 0;
+}
+.ann-btn:hover { color: #1e293b; }
+.ann-form { display: flex; gap: 0.4rem; margin-top: 0.5rem; align-items: flex-end; }
+.ann-form textarea {
+  flex: 1; font-size: 0.82rem; border: 1px solid #e2e8f0; border-radius: 6px;
+  padding: 0.4rem 0.6rem; resize: none; font-family: inherit; line-height: 1.4;
+}
+.ann-form textarea:focus { outline: none; border-color: #2563eb; }
+.ann-submit {
+  background: #1e3a5f; color: white; border: none; border-radius: 6px;
+  padding: 0.4rem 0.75rem; font-size: 0.78rem; cursor: pointer; white-space: nowrap;
+}
+.ann-submit:hover { background: #1e40af; }
+.step-ann-badge {
+  font-size: 0.65rem; font-weight: 700;
+  background: #f59e0b; color: white;
+  border-radius: 10px; padding: 0.08rem 0.45rem;
+  margin-left: 0.35rem; display: none;
+}
+.step-ann-badge.visible { display: inline-block; }
+</style>
+
+<script>
+(function() {
+  const ENRICHMENT_ID = {{ e.id }};
+  const STEP_FIELDS = ['step1','step2','step3','step4','step5'];
+  let allAnnotations = [];
+
+  async function loadAnnotations() {
+    try {
+      const resp = await fetch(`/enrich/api/enrichments/${ENRICHMENT_ID}/annotations`);
+      if (!resp.ok) return;
+      allAnnotations = await resp.json();
+      injectAllThreads();
+      updateBadges();
+    } catch(e) {}
+  }
+
+  function getUsername() {
+    // Use the attribution badge text (auto-set from login) or fall back to 'anonymous'
+    const badge = document.querySelector('.badge.bg-secondary[title="Attributed automatically from your login"]');
+    const name = (badge ? badge.textContent : '').trim();
+    return (name && name !== '—') ? name : 'anonymous';
+  }
+
+  function injectAllThreads() {
+    STEP_FIELDS.forEach(field => {
+      const n = field.replace('step','');
+      const card = document.getElementById(`step-card-${n}`);
+      if (!card) return;
+      const body = card.querySelector('.step-body');
+      if (!body || body.querySelector('.ann-thread')) return;
+      const thread = document.createElement('div');
+      thread.className = 'ann-thread';
+      thread.dataset.field = field;
+      thread.setAttribute('onclick', 'event.stopPropagation()');
+      thread.innerHTML = buildThreadHTML(field);
+      body.appendChild(thread);
+    });
+  }
+
+  function buildThreadHTML(field) {
+    const anns = allAnnotations.filter(a => a.field === field);
+    const open  = anns.filter(a => !a.resolved).length;
+    return `
+      <button class="ann-toggle-btn" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span>${_T('ann.comments','💬 Comments')}</span>
+        <span class="ann-badge ${open ? '' : 'zero'}">${anns.length}</span>
+      </button>
+      <div class="ann-body">
+        <div class="ann-list">${anns.map(renderAnn).join('')}</div>
+        <div class="ann-form">
+          <textarea rows="2" placeholder="${_T('ann.add_ph','Add a comment…')}"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.nextElementSibling.click();}"></textarea>
+          <button class="ann-submit" onclick="submitAnn(this,'${field}')">${_T('ann.post','Post')}</button>
+        </div>
+      </div>`;
+  }
+
+  function renderAnn(a) {
+    const date = (a.created_at || '').slice(0,16).replace('T',' ');
+    return `
+      <div class="ann-item ${a.resolved ? 'resolved' : ''}" data-ann-id="${a.id}">
+        <div>
+          <span class="ann-author">${escH(a.author)}</span>
+          <span class="ann-date">${date}</span>
+          ${a.resolved ? `<span style="font-size:0.68rem;color:#16a34a;margin-left:.4rem;">${_T('ann.resolved','✓ resolved')}</span>` : ''}
+        </div>
+        <div class="ann-text">${escH(a.body)}</div>
+        ${!a.resolved ? `
+        <div class="ann-actions">
+          <button class="ann-btn" onclick="resolveAnn(${a.id},this)">${_T('ann.resolve','✓ Resolve')}</button>
+          <button class="ann-btn" style="color:#ef4444;" onclick="deleteAnn(${a.id},this)">${_T('ann.delete','Delete')}</button>
+        </div>` : ''}
+      </div>`;
+  }
+
+  function updateBadges() {
+    STEP_FIELDS.forEach(field => {
+      const n = field.replace('step','');
+      const card = document.getElementById(`step-card-${n}`);
+      if (!card) return;
+      const header = card.querySelector('.step-header');
+      if (!header) return;
+      let badge = header.querySelector('.step-ann-badge');
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'step-ann-badge';
+        const toggle = header.querySelector('.step-toggle');
+        (toggle || header).before ? (toggle ? toggle.before(badge) : header.appendChild(badge)) : header.appendChild(badge);
+      }
+      const open = allAnnotations.filter(a => a.field === field && !a.resolved).length;
+      badge.textContent = open + (open === 1 ? ' comment' : ' comments');
+      badge.classList.toggle('visible', open > 0);
+    });
+  }
+
+  window.submitAnn = async function(btn, field) {
+    const ta = btn.previousElementSibling;
+    const body = ta.value.trim();
+    if (!body) return;
+    try {
+      const resp = await fetch(`/enrich/api/enrichments/${ENRICHMENT_ID}/annotations`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ field, author: getUsername(), body }),
+      });
+      const ann = await resp.json();
+      allAnnotations.push(ann);
+      ta.value = '';
+      btn.closest('.ann-body').querySelector('.ann-list')
+         .insertAdjacentHTML('beforeend', renderAnn(ann));
+      const b = btn.closest('.ann-thread').querySelector('.ann-badge');
+      const cnt = allAnnotations.filter(a => a.field === field).length;
+      const open = allAnnotations.filter(a => a.field === field && !a.resolved).length;
+      b.textContent = cnt; b.classList.toggle('zero', open === 0);
+      updateBadges();
+    } catch(e) { alert('Failed to post comment.'); }
+  };
+
+  window.resolveAnn = async function(annId, btn) {
+    try {
+      const resp = await fetch(`/enrich/api/annotations/${annId}/resolve`, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ resolved_by: getUsername() }),
+      });
+      const updated = await resp.json();
+      allAnnotations = allAnnotations.map(a => a.id === annId ? updated : a);
+      btn.closest('.ann-item').outerHTML = renderAnn(updated);
+      updateBadges();
+    } catch(e) { alert('Failed to resolve.'); }
+  };
+
+  window.deleteAnn = async function(annId, btn) {
+    if (!confirm('Delete this comment?')) return;
+    try {
+      await fetch(`/enrich/api/annotations/${annId}`, {method:'DELETE'});
+      allAnnotations = allAnnotations.filter(a => a.id !== annId);
+      btn.closest('.ann-item').remove();
+      updateBadges();
+    } catch(e) { alert('Failed to delete.'); }
+  };
+
+  function escH(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  document.addEventListener('DOMContentLoaded', loadAnnotations);
+})();
+</script>
+
+<script>
+// ── Definition Quality Checks (client-side) ──────────────────────────────
+const CLUSTER_LABEL = {{ e.cluster_label | tojson }};
+const QUALITY_MIN_REMAINING = 20;
+
+const QUALITY_CHECKS = [
+  {
+    id: 'A', field: 'nl_definition_en',
+    check(v) {
+      if (!v.genus) return { passed: true, na: true, message: 'genus not set yet' };
+      if (!v.nl_en) return { passed: true, na: false, message: '' }; // B_en covers empty
+      // Same rule as verify_service._quality_checks_for_row: also try CamelCase → words,
+      // so genus "MaterialArtifact" matches "material artifact" in the definition.
+      const nlLc = v.nl_en.toLowerCase();
+      const genusWords = v.genus.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+      const passed = nlLc.includes(v.genus.toLowerCase()) || nlLc.includes(genusWords);
+      return { passed, na: false, message: passed ? '' : `genus "${v.genus}" not found in text` };
+    }
+  },
+  {
+    id: 'B_en', field: 'nl_definition_en',
+    check(v) {
+      const passed = v.nl_en.length > 0;
+      return { passed, na: false, message: passed ? '' : 'English definition is empty' };
+    }
+  },
+  {
+    id: 'B_pt', field: 'nl_definition_pt',
+    check(v) {
+      const passed = v.nl_pt.length > 0;
+      return { passed, na: false, message: passed ? '' : 'Portuguese definition is empty' };
+    }
+  },
+  {
+    id: 'C', field: 'semiformal_axiom',
+    check(v) {
+      const passed = v.semiformal.length > 0;
+      return { passed, na: false, message: passed ? '' : 'Semiformal axiom is empty' };
+    }
+  },
+  {
+    id: 'D', field: 'label_pt',
+    check(v) {
+      const passed = v.label_pt.length > 0;
+      return { passed, na: false, message: passed ? '' : 'Portuguese label is empty' };
+    }
+  },
+  {
+    id: 'G', field: 'nl_definition_en',
+    check(v) {
+      if (!v.nl_en) return { passed: true, na: false, message: '' };
+      let remaining = v.nl_en;
+      if (remaining.toLowerCase().startsWith(CLUSTER_LABEL.toLowerCase())) {
+        remaining = remaining.slice(CLUSTER_LABEL.length).trim();
+      }
+      const passed = remaining.length >= QUALITY_MIN_REMAINING;
+      return { passed, na: false, message: passed ? '' : 'Definition appears circular (too similar to class name)' };
+    }
+  },
+];
+
+function _getFieldValues() {
+  return {
+    genus:     (document.getElementById('genus')?.value          || '').trim(),
+    nl_en:     (document.getElementById('nl_definition_en')?.value || '').trim(),
+    nl_pt:     (document.getElementById('nl_definition_pt')?.value || '').trim(),
+    semiformal:(document.getElementById('semiformal_axiom')?.value  || '').trim(),
+    label_pt:  (document.getElementById('label_pt')?.value         || '').trim(),
+  };
+}
+
+function _runQualityChecks() {
+  const v = _getFieldValues();
+  return QUALITY_CHECKS.map(c => ({ ...c, result: c.check(v) }));
+}
+
+function _renderQualityBadge(checks) {
+  const badge = document.getElementById('quality-badge');
+  if (!badge) return;
+  const failures = checks.filter(c => !c.result.passed && !c.result.na);
+  if (failures.length === 0) {
+    badge.className = 'badge bg-success-subtle text-success border border-success-subtle';
+    badge.textContent = '✓ Quality OK';
+    badge.title = 'All definition quality checks passed';
+  } else {
+    badge.className = 'badge bg-warning-subtle text-warning border border-warning-subtle';
+    badge.textContent = `⚠ ${failures.length} issue${failures.length !== 1 ? 's' : ''}`;
+    badge.title = failures.map(c => c.result.message).join('\n');
+  }
+}
+
+function _renderQualityIndicators(checks) {
+  for (const c of checks) {
+    const anchor = document.querySelector(`[data-quality-anchor="${c.id}"]`);
+    if (!anchor) continue;
+    if (c.result.na) {
+      anchor.className = 'quality-indicator text-muted';
+      anchor.textContent = `— ${c.result.message}`;
+    } else if (c.result.passed) {
+      anchor.className = 'quality-indicator text-success';
+      anchor.textContent = '✓';
+    } else {
+      anchor.className = 'quality-indicator text-warning';
+      anchor.textContent = `⚠ ${c.result.message}`;
+    }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const checks = _runQualityChecks();
+  _renderQualityBadge(checks);
+
+  const badge = document.getElementById('quality-badge');
+  if (badge) {
+    badge.addEventListener('click', () => {
+      const freshChecks = _runQualityChecks();
+      _renderQualityBadge(freshChecks);
+      _renderQualityIndicators(freshChecks);
+      const failures = freshChecks.filter(c => !c.result.passed && !c.result.na);
+      if (failures.length > 0) {
+        const firstField = document.getElementById(failures[0].field);
+        firstField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }
+});
+// ── End Definition Quality Checks ─────────────────────────────────────────
+
+// ── Page translation ──────────────────────────────────────────────────────────
+(function() {
+  const CACHE_KEY = 'copi_trans_{{ e.id }}';
+
+  function collectBlocks() {
+    const blocks = [];
+    document.querySelectorAll('[data-translatable]').forEach(el => {
+      const id = el.dataset.translatable;
+      const textEl = el.querySelector('.translatable-text') || el;
+      const text = textEl.textContent.trim();
+      if (text) blocks.push({ id, text });
+    });
+    return blocks;
+  }
+
+  function applyMap(map) {
+    document.querySelectorAll('[data-translatable]').forEach(el => {
+      const id = el.dataset.translatable;
+      if (!map[id]) return;
+      const textEl = el.querySelector('.translatable-text') || el;
+      textEl.textContent = map[id];
+    });
+  }
+
+  async function fetchTranslations(blocks) {
+    const resp = await fetch('/enrich/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts: blocks }),
+    });
+    if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText);
+    return (await resp.json()).translations;
+  }
+
+  function setBtnState(label, spinning) {
+    const btn = document.getElementById('translate-page-btn');
+    const lbl = document.getElementById('translate-btn-label');
+    if (!btn) return;
+    if (spinning) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" style="width:.8rem;height:.8rem;"></span> Traduzindo…';
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '🌐 <span id="translate-btn-label">' + label + '</span>';
+    }
+  }
+
+  // Called by the re-translate button — clears cache and re-fetches
+  window.retranslatePage = async function() {
+    localStorage.removeItem(CACHE_KEY);
+    setBtnState('Traduzindo…', true);
+    const blocks = collectBlocks();
+    try {
+      const map = await fetchTranslations(blocks);
+      applyMap(map);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(map));
+      setBtnState('Traduzido ✓', false);
+    } catch(e) {
+      setBtnState('Erro — tentar novamente', false);
+    }
+  };
+
+  // Auto-run on page load when PT is active
+  document.addEventListener('DOMContentLoaded', async function() {
+    const lang = localStorage.getItem('copi_lang') || 'en';
+    if (lang === 'en') return;
+
+    const btn = document.getElementById('translate-page-btn');
+    if (btn) btn.style.display = '';
+
+    // Check localStorage cache first
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      try {
+        applyMap(JSON.parse(cached));
+        setBtnState('Traduzido ✓', false);
+        return;
+      } catch(_) {}
+    }
+
+    // No cache — translate now
+    const blocks = collectBlocks();
+    if (!blocks.length) { setBtnState('—', false); return; }
+
+    setBtnState('Traduzindo…', true);
+    try {
+      const map = await fetchTranslations(blocks);
+      applyMap(map);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(map));
+      setBtnState('Traduzido ✓', false);
+    } catch(e) {
+      setBtnState('Erro — tentar novamente', false);
+    }
+  });
+})();
+
+        // Cross-standard divergence panel
+        const ENRICH_ID = {{ e.id }};
+        const TYPE_COLORS = {T1:'#2563eb',T2:'#7c3aed',T3:'#d97706',T4:'#dc2626',T5:'#b45309'};
+        const TYPE_BG = {T1:'#dbeafe',T2:'#ede9fe',T3:'#fef3c7',T4:'#fee2e2',T5:'#fef9c3'};
+
+        async function loadDivergences() {
+            const resp = await fetch(`/enrich/api/${ENRICH_ID}/divergences`);
+            if (!resp.ok) return;
+            const divs = await resp.json();
+            renderDivergences(divs);
+        }
+
+        function renderDivergences(divs) {
+            const container = document.getElementById('divResults');
+            const badge = document.getElementById('divCount');
+            if (!divs.length) {
+                container.innerHTML = '<p class="text-muted" style="font-size:.83rem;font-style:italic;">No divergences detected yet. Click "Detect divergences" to analyse.</p>';
+                badge.textContent = 'none detected yet';
+                badge.classList.add('empty');
+                return;
+            }
+            badge.textContent = divs.length + ' divergence' + (divs.length > 1 ? 's' : '');
+            badge.classList.remove('empty');
+
+            let html = '';
+            for (const d of divs) {
+                const color = TYPE_COLORS[d.divergence_type] || '#475569';
+                const bg    = TYPE_BG[d.divergence_type]    || '#f1f5f9';
+                html += `
+<div style="border:1px solid #e2e8f0;border-radius:6px;margin-bottom:.75rem;overflow:hidden;">
+  <div style="background:${bg};border-bottom:1px solid #e2e8f0;padding:.5rem .9rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:.72rem;font-weight:700;background:${color};color:#fff;border-radius:4px;padding:.1rem .45rem;font-family:system-ui;">${d.divergence_type}</span>
+    <span style="font-size:.82rem;font-weight:600;font-family:system-ui;">${d.divergence_label}</span>
+    <span style="font-size:.68rem;color:#6c757d;margin-left:auto;font-family:monospace;">Step ${d.detected_at_step||'?'} &middot; ${d.detected_by}</span>
+  </div>
+  <div style="padding:.65rem .9rem;font-size:.82rem;">
+    ${d.source_a ? `<div style="font-size:.72rem;font-family:system-ui;color:#6c757d;margin-bottom:.3rem;">${d.source_a}${d.source_b ? ' vs '+d.source_b : ''}</div>` : ''}
+    <div style="color:#374151;">${d.description}</div>
+    ${d.evidence ? `<details style="margin-top:.4rem;"><summary style="font-size:.72rem;color:#94a3b8;cursor:pointer;">Evidence</summary><div style="font-size:.75rem;color:#6b7280;font-style:italic;margin-top:.3rem;">${d.evidence.substring(0,300)}</div></details>` : ''}
+    <div style="margin-top:.5rem;">
+      <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:#6c757d;margin-bottom:.2rem;">Resolution</div>
+      <div class="d-flex gap-1">
+        <input type="text" id="res-${d.id}" class="form-control form-control-sm" value="${d.resolution||''}"
+               placeholder="How was this divergence resolved?" style="font-size:.8rem;">
+        <button class="btn btn-sm btn-outline-secondary" onclick="saveRes(${d.id})" style="font-size:.75rem;white-space:nowrap;">Save</button>
+      </div>
+    </div>
+  </div>
+</div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        async function saveRes(divId) {
+            const val = document.getElementById('res-' + divId)?.value.trim() || '';
+            await fetch(`/enrich/api/divergences/${divId}/resolution`, {
+                method: 'PATCH',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({resolution: val}),
+            });
+        }
+
+        async function runAutoDetect() {
+            const btn = document.getElementById('btnAutoDetect');
+            btn.textContent = '⏳ Detecting…';
+            btn.disabled = true;
+            try {
+                const resp = await fetch(`/enrich/${ENRICH_ID}/detect-divergences`, {method:'POST'});
+                const data = await resp.json();
+                renderDivergences(data.divergences || []);
+            } finally {
+                btn.textContent = '🔍 Detect divergences';
+                btn.disabled = false;
+            }
+        }
+
+        async function runLlmDetect() {
+            const btn = document.getElementById('btnLlmDetect');
+            btn.textContent = '⏳ Asking LLM…';
+            btn.disabled = true;
+            try {
+                const resp = await fetch(`/enrich/${ENRICH_ID}/llm-detect-divergences`, {method:'POST'});
+                // Reload all divergences (auto + llm)
+                await loadDivergences();
+            } finally {
+                btn.textContent = '🤖 LLM-detect';
+                btn.disabled = false;
+            }
+        }
+
+        // Load divergences on page load
+        loadDivergences();
+
+        function undoLast() {
+            if (!confirm('Undo the last change to this record?')) return;
+            fetch(`/enrich/{{ e.id }}/undo`, {method: 'POST'})
+                .then(resp => {
+                    if (resp.ok || resp.redirected) {
+                        window.location.reload();
+                    } else {
+                        resp.text().then(t => alert('Undo failed: ' + t));
+                    }
+                });
+        }
+</script>
+{% endblock %}

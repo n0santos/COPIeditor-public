@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}COPI Editor{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/copi-logo.svg">
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --copi-dark:   #0f172a;
+      --copi-mid:    #1e3a5f;
+      --copi-blue:   #2563eb;
+      --copi-light:  #f8fafc;
+      --copi-border: #e2e8f0;
+      --copi-muted:  #64748b;
+      --font-sans:   'DM Sans', system-ui, sans-serif;
+      --font-serif:  'DM Serif Display', Georgia, serif;
+    }
+
+    body {
+      background: var(--copi-light);
+      color: #1e293b;
+      font-family: var(--font-sans);
+    }
+
+    h1, h2, h3, h4 {
+      font-family: var(--font-serif);
+      font-weight: 400;
+    }
+
+    /* ── Top identity band ── */
+    .brand-band {
+      background: var(--copi-dark);
+      padding: 0.35rem 0;
+      font-size: 0.72rem;
+      font-family: var(--font-sans);
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 0.04em;
+    }
+    .brand-band a { color: rgba(255,255,255,0.45); text-decoration: none; }
+    .brand-band a:hover { color: rgba(255,255,255,0.75); }
+
+    /* ── Main nav ── */
+    .copi-nav {
+      background: var(--copi-mid);
+      padding: 0;
+    }
+    .copi-nav .navbar-brand {
+      font-family: var(--font-sans);
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.03em;
+      color: white;
+      padding: 0.65rem 0;
+    }
+    .copi-nav .navbar-brand .editor-tag {
+      font-weight: 300;
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.45);
+      margin-left: 0.4rem;
+      vertical-align: middle;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .copi-nav .nav-link {
+      font-family: var(--font-sans);
+      color: rgba(255,255,255,0.65) !important;
+      font-size: 0.84rem;
+      font-weight: 500;
+      padding: 0.9rem 0.85rem !important;
+      border-bottom: 2px solid transparent;
+      transition: color .15s, border-color .15s;
+    }
+    .copi-nav .nav-link:hover,
+    .copi-nav .nav-link.active,
+    .copi-nav .nav-link.show {
+      color: white !important;
+      border-bottom-color: rgba(255,255,255,0.5);
+    }
+    .copi-nav .nav-link.active {
+      border-bottom-color: white;
+    }
+
+    /* ── Dropdown menus ── */
+    .copi-nav .dropdown-menu {
+      background: #122645;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      margin-top: 1px;
+      padding: 0.35rem 0;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+      min-width: 170px;
+    }
+    .copi-nav .dropdown-item {
+      font-family: var(--font-sans);
+      color: rgba(255,255,255,0.65);
+      font-size: 0.83rem;
+      font-weight: 400;
+      padding: 0.45rem 1rem;
+      transition: background .12s, color .12s;
+    }
+    .copi-nav .dropdown-item:hover { background: rgba(255,255,255,0.08); color: white; }
+    .copi-nav .dropdown-item.active { background: rgba(255,255,255,0.12); color: white; font-weight: 500; }
+    .copi-nav .dropdown-divider { border-color: rgba(255,255,255,0.08); margin: 0.2rem 0; }
+    .copi-nav .dropdown-toggle::after {
+      opacity: 0.45;
+      vertical-align: 0.18em;
+      border-top-width: 0.28em;
+    }
+
+    /* ── Page content ── */
+    .page-content { padding-top: 1.75rem; padding-bottom: 4rem; }
+
+    /* ── Cards / panels ── */
+    .panel {
+      background: white;
+      border: 1px solid var(--copi-border);
+      border-radius: 8px;
+    }
+    .panel-header {
+      padding: 0.75rem 1.1rem;
+      border-bottom: 1px solid var(--copi-border);
+      font-family: var(--font-sans);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--copi-muted);
+    }
+    .panel-body { padding: 1rem 1.1rem; }
+
+    /* ── Term cards ── */
+    .term-card { transition: box-shadow .15s; }
+    .term-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+    .badge-source { font-size: .75em; }
+    .definition-text { color: #475569; font-style: italic; }
+
+    /* ── Search bar in nav ── */
+    .nav-search .form-control {
+      font-size: 0.82rem;
+      font-family: var(--font-sans);
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      border-radius: 5px;
+    }
+    .nav-search .form-control::placeholder { color: rgba(255,255,255,0.4); }
+    .nav-search .form-control:focus {
+      background: rgba(255,255,255,0.15);
+      border-color: rgba(255,255,255,0.4);
+      color: white;
+      box-shadow: none;
+    }
+    .nav-search .btn {
+      font-family: var(--font-sans);
+      font-size: 0.82rem;
+      border-color: rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.7);
+    }
+    .nav-search .btn:hover { color: white; border-color: white; }
+
+    /* ── Suggestion box: floating button opens a pre-filled GitHub issue ── */
+    .suggest-fab {
+      position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 1050;
+      background: var(--copi-blue); color: #fff; border: none; border-radius: 999px;
+      padding: 0.6rem 1.1rem; font-family: var(--font-sans); font-size: 0.82rem;
+      font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,.25); cursor: pointer;
+      display: flex; align-items: center; gap: 0.4rem;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .suggest-fab:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+    .suggest-modal-backdrop {
+      display: none; position: fixed; inset: 0; z-index: 1051;
+      background: rgba(15,23,42,.55); align-items: center; justify-content: center; padding: 1rem;
+    }
+    .suggest-modal {
+      background: #fff; border-radius: 8px; max-width: 480px; width: 100%;
+      padding: 1.5rem 1.6rem; box-shadow: 0 24px 60px rgba(0,0,0,.35);
+      font-family: var(--font-sans);
+    }
+    .suggest-modal h3 { font-family: var(--font-sans); font-size: 1.1rem; font-weight: 700; margin-bottom: .3rem; }
+    .suggest-modal-hint { font-size: 0.8rem; color: var(--copi-muted); margin-bottom: 1rem; }
+    .suggest-modal label {
+      display: block; font-size: 0.78rem; font-weight: 600; color: #374151;
+      margin-bottom: .25rem; margin-top: .85rem;
+    }
+    .suggest-modal input, .suggest-modal textarea {
+      width: 100%; border: 1px solid var(--copi-border); border-radius: 5px;
+      padding: .45rem .6rem; font-family: var(--font-sans); font-size: .85rem; resize: vertical;
+    }
+    .suggest-modal input:focus, .suggest-modal textarea:focus {
+      outline: 2px solid var(--copi-blue); outline-offset: 1px;
+    }
+    .suggest-modal-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.25rem; }
+    .suggest-btn-cancel {
+      background: none; border: none; color: var(--copi-muted); font-size: .82rem;
+      font-weight: 600; cursor: pointer; padding: .5rem .7rem;
+    }
+    .suggest-btn-submit {
+      background: var(--copi-blue); color: #fff; border: none; border-radius: 5px;
+      font-size: .82rem; font-weight: 600; cursor: pointer; padding: .5rem 1rem;
+    }
+    .suggest-btn-submit:hover { background: #1d4ed8; }
+  </style>
+  {% block head %}{% endblock %}
+  <script src="/static/i18n.js"></script>
+</head>
+<body>
+
+<!-- Identity band -->
+<div class="brand-band">
+  <div class="container-fluid d-flex justify-content-between align-items-center" style="padding-left:1.5rem; padding-right:1.5rem;">
+    <span>
+      Core Ontology for Petroleum Installations
+      <span style="margin: 0 0.5rem; opacity:.4;">·</span>
+      INF-UFRGS-Ontologies · CNPq INF-UFRGS-ENERGIA
+    </span>
+    <span style="display:flex; align-items:center; gap:1rem;">
+      <a href="https://www.inf.ufrgs.br/ontologies/copi" target="_blank">inf.ufrgs.br/ontologies/copi</a>
+      <span style="font-family:monospace; opacity:.5; font-size:0.68rem;"
+            title="Build: {{ build_date }}">{{ build_sha[:7] if build_sha != 'dev' else 'dev' }}</span>
+    </span>
+  </div>
+</div>
+
+<!-- Main nav -->
+<nav class="copi-nav navbar navbar-expand-lg">
+  <div class="container-fluid" style="padding-left:1.5rem; padding-right:1.5rem;">
+    <a class="navbar-brand" href="/">
+      COPI<span class="editor-tag">Editor</span>
+    </a>
+    <button class="navbar-toggler border-secondary" type="button"
+            data-bs-toggle="collapse" data-bs-target="#mainNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav me-auto">
+        {% set path = request.url.path %}
+        {% set _quality_active = path.startswith('/enrich/verify') or path.startswith('/enrich/consequences') or path.startswith('/enrich/qa') %}
+        {% set _ref_active     = path.startswith('/enrich/docs') or path.startswith('/enrich/imported-ontologies') or path.startswith('/references') %}
+        {% set _wb_active      = path.startswith('/enrich') and not _quality_active and not _ref_active %}
+
+        <li class="nav-item">
+          <a class="nav-link{% if path == '/' %} active{% endif %}" href="/"
+             data-i18n="nav.ontology">Ontology</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link{% if path.startswith('/requirements') %} active{% endif %}"
+             href="/requirements" data-i18n="nav.requirements">Requirements</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link{% if path.startswith('/search') or path.startswith('/cluster') or path.startswith('/terms') %} active{% endif %}"
+             href="/search" data-i18n="nav.terms">Terms</a>
+        </li>
+
+        <!-- Workbench dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle{% if _wb_active %} active{% endif %}"
+             href="#" data-bs-toggle="dropdown" aria-expanded="false"
+             data-i18n="nav.workbench">Workbench</a>
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item{% if _wb_active and not path.startswith('/enrich/relations') and not path.startswith('/enrich/divergences') %} active{% endif %}"
+                 href="/enrich/" data-i18n="nav.enrichment">Enrichment</a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if path.startswith('/enrich/relations') %} active{% endif %}"
+                 href="/enrich/relations" data-i18n="nav.relations">Relations</a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if path.startswith('/enrich/divergences') %} active{% endif %}"
+                 href="/enrich/divergences">Divergences</a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- Quality dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle{% if _quality_active %} active{% endif %}"
+             href="#" data-bs-toggle="dropdown" aria-expanded="false"
+             data-i18n="nav.quality">Quality</a>
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item{% if path.startswith('/enrich/verify') %} active{% endif %}"
+                 href="/enrich/verify" data-i18n="nav.verify">Verify</a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if path.startswith('/enrich/consequences') %} active{% endif %}"
+                 href="/enrich/consequences" data-i18n="nav.validate">Validate</a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if path.startswith('/enrich/qa') %} active{% endif %}"
+                 href="/enrich/qa" data-i18n="nav.qa">Q&amp;A</a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- Reference dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle{% if _ref_active %} active{% endif %}"
+             href="#" data-bs-toggle="dropdown" aria-expanded="false"
+             data-i18n="nav.reference">Reference</a>
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item{% if path.startswith('/enrich/docs') %} active{% endif %}"
+                 href="/enrich/docs" data-i18n="nav.docs">Docs</a>
+            </li>
+            <li>
+              <a class="dropdown-item{% if path.startswith('/enrich/imported-ontologies') %} active{% endif %}"
+                 href="/enrich/imported-ontologies" data-i18n="nav.imported_onto">Ontologies</a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item{% if path.startswith('/references') %} active{% endif %}"
+                 href="/references">Literature</a>
+            </li>
+          </ul>
+        </li>
+      </ul>
+
+      <form class="d-flex nav-search ms-2" method="get" action="/search">
+        <input class="form-control me-2" type="search" name="q"
+               placeholder="Search terms…"
+               data-i18n-ph="nav.search_ph"
+               value="{{ request.query_params.get('q', '') }}"
+               style="width:180px;">
+        <button class="btn btn-sm btn-outline-light" type="submit" data-i18n="nav.search_btn">Search</button>
+      </form>
+      <button id="lang-toggle-btn"
+              onclick="toggleLang()"
+              style="margin-left:0.75rem; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+                     color:rgba(255,255,255,0.7); border-radius:5px; padding:0.25rem 0.6rem;
+                     font-size:0.75rem; font-weight:600; cursor:pointer; letter-spacing:0.04em;
+                     font-family:var(--font-sans);"
+              title="Alternar idioma / Toggle language">PT</button>
+      {% if request.state.user %}
+      <span style="margin-left:0.75rem; font-size:0.78rem; font-weight:500;
+                   color:rgba(255,255,255,0.65); font-family:var(--font-sans);">
+        👤 {{ request.state.user }}
+      </span>
+      {% else %}
+      <span style="margin-left:0.75rem; font-size:0.78rem; font-weight:500;
+                   color:rgba(255,255,255,0.45); font-family:var(--font-sans);">
+        👤 Visitante
+      </span>
+      <a href="/auth/login?next={{ (request.url.path ~ ('?' ~ request.url.query if request.url.query else '')) | urlencode }}"
+         class="btn btn-sm btn-outline-light"
+         style="margin-left:0.5rem; font-size:0.75rem; padding:0.25rem 0.7rem;">Entrar</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid page-content" style="max-width:none; padding-left:1.5rem; padding-right:1.5rem;">
+  {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  (function () {
+    const _WRITE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+    const _origFetch = window.fetch;
+    window.fetch = async function (input, init) {
+      init = init || {};
+      if (_WRITE.has((init.method || 'GET').toUpperCase())) {
+        init = Object.assign({}, init);
+        init.headers = Object.assign({}, init.headers, {'X-Requested-With': 'XMLHttpRequest'});
+      }
+      const resp = await _origFetch(input, init);
+      if (resp.status === 401) {
+        const banner = document.createElement('div');
+        banner.style.cssText = [
+          'position:fixed', 'top:1rem', 'right:1rem', 'z-index:10000',
+          'background:#dc3545', 'color:#fff', 'padding:0.75rem 1.25rem',
+          'border-radius:0.5rem', 'box-shadow:0 4px 12px rgba(0,0,0,.3)',
+          'font-family:var(--font-sans)', 'font-size:0.9rem',
+        ].join(';');
+        const _next = encodeURIComponent(window.location.pathname + window.location.search);
+        banner.innerHTML = 'Faça <a href="/auth/login?next=' + _next + '" style="color:#fff;font-weight:700;">login</a> para realizar esta ação.';
+        document.body.appendChild(banner);
+        setTimeout(() => banner.remove(), 5000);
+      }
+      return resp;
+    };
+  })();
+</script>
+{% block scripts %}{% endblock %}
+
+<!-- Suggestion box: floating button opens a pre-filled GitHub issue -->
+<button id="suggestFab" class="suggest-fab" onclick="openSuggestModal()"
+        title="Suggest a change / Sugerir uma mudança">
+  💬 <span data-i18n="suggest.fab">Suggest a change</span>
+</button>
+<div id="suggestBackdrop" class="suggest-modal-backdrop"
+     onclick="if(event.target===this)closeSuggestModal()">
+  <div class="suggest-modal">
+    <h3 data-i18n="suggest.title">Suggest a change</h3>
+    <p class="suggest-modal-hint" data-i18n="suggest.hint">
+      Opens a pre-filled GitHub issue on the COPI repo — nothing is sent until you submit it there.
+    </p>
+    <label for="suggestTitle" data-i18n="suggest.field_title">Title</label>
+    <input id="suggestTitle" type="text" maxlength="200"
+           data-i18n-ph="suggest.title_ph"
+           placeholder="e.g. Search ranking feels off for plural terms">
+    <label for="suggestBody" data-i18n="suggest.field_desc">Description</label>
+    <textarea id="suggestBody" rows="5"
+              data-i18n-ph="suggest.desc_ph"
+              placeholder="What would you change, and why?"></textarea>
+    <div class="suggest-modal-actions">
+      <button class="suggest-btn-cancel" onclick="closeSuggestModal()" data-i18n="suggest.cancel">Cancel</button>
+      <button class="suggest-btn-submit" onclick="submitSuggestion()" data-i18n="suggest.submit">Open GitHub issue ↗</button>
+    </div>
+  </div>
+</div>
+<script>
+  function openSuggestModal() {
+    document.getElementById('suggestBackdrop').style.display = 'flex';
+    document.getElementById('suggestTitle').focus();
+  }
+  function closeSuggestModal() {
+    document.getElementById('suggestBackdrop').style.display = 'none';
+  }
+  function submitSuggestion() {
+    var titleEl = document.getElementById('suggestTitle');
+    var bodyEl = document.getElementById('suggestBody');
+    var title = titleEl.value.trim() || ('Suggestion: ' + document.title);
+    var desc = bodyEl.value.trim();
+    var body = (desc ? desc + '\n\n' : '') + '---\nPage: ' + window.location.href;
+    var url = 'https://github.com/INF-UFRGS-Ontologies/COPI/issues/new'
+      + '?title=' + encodeURIComponent(title)
+      + '&body=' + encodeURIComponent(body)
+      + '&labels=' + encodeURIComponent('suggestion');
+    window.open(url, '_blank', 'noopener');
+    titleEl.value = ''; bodyEl.value = '';
+    closeSuggestModal();
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      var b = document.getElementById('suggestBackdrop');
+      if (b && b.style.display === 'flex') closeSuggestModal();
+    }
+  });
+</script>
+
+<!-- Logo lightbox (shared across all pages) -->
+<div id="logoModal"
+     style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:9999;
+            background:rgba(0,0,0,0.8); align-items:center; justify-content:center;
+            cursor:zoom-out;"
+     onclick="this.style.display='none';">
+  <img src="/static/copi-logo.svg" alt="COPI logo"
+       style="width:auto; height:480px; max-width:90vw; max-height:90vh;
+              box-shadow:0 24px 80px rgba(0,0,0,.6);
+              pointer-events:none;">
+</div>
+<script>
+  function openLogoModal() {
+    var m = document.getElementById('logoModal');
+    m.style.display = 'flex';
+  }
+</script>
+</body>
+</html>

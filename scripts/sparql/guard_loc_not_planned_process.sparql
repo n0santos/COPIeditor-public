@@ -1,0 +1,10 @@
+# ODR-009 guard: LossOfContainment must NOT be ⊑ iof-core:PlannedProcess
+# Returns rows when the forbidden entailment IS present (failure condition).
+PREFIX copi:     <https://www.inf.ufrgs.br/ontologies/copi/>
+PREFIX iof-core: <https://spec.industrialontologies.org/ontology/construct/>
+PREFIX rdfs:     <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?violation WHERE {
+  BIND("LossOfContainment (COPI_0000015) ⊑ PlannedProcess (forbidden)" AS ?violation)
+  copi:COPI_0000015 rdfs:subClassOf* iof-core:PlannedProcess .
+}

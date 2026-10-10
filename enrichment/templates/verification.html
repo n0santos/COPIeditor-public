@@ -1,0 +1,1019 @@
+{% extends "base.html" %}
+{% block title %}Ontology Verification — COPI Editor{% endblock %}
+
+{% block head %}
+<style>
+  :root {
+    --ok:      #16a34a;
+    --warn:    #d97706;
+    --error:   #dc2626;
+    --muted:   #64748b;
+    --border:  #e2e8f0;
+    --light:   #f8fafc;
+  }
+
+  /* ── Check panels ── */
+  .check-panel {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .check-panel-header {
+    padding: 1rem 1.25rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--light);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .check-panel-title {
+    font-family: system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #1e293b;
+    flex: 1;
+  }
+  .check-panel-subtitle {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-family: system-ui, sans-serif;
+    margin-top: 0.15rem;
+  }
+  .check-panel-body { padding: 1.1rem 1.25rem; }
+
+  /* ── Status badge ── */
+  .status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+    margin-right: 0.4rem;
+  }
+  .dot-idle    { background: #cbd5e1; }
+  .dot-running { background: #2563eb; animation: pulse 1s ease infinite; }
+  .dot-ok      { background: var(--ok); }
+  .dot-warn    { background: var(--warn); }
+  .dot-error   { background: var(--error); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .4; }
+  }
+
+  /* ── Severity pills ── */
+  .sev-critical { background:#fee2e2; color:#991b1b; }
+  .sev-important{ background:#fef3c7; color:#92400e; }
+  .sev-minor    { background:#f1f5f9; color:#475569; }
+  .sev-pill {
+    display:inline-block; font-size:0.65rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:.05em;
+    border-radius:4px; padding:.15rem .45rem;
+  }
+
+  /* ── FAIR category cards ── */
+  .fair-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .85rem 1rem;
+    background: white;
+  }
+  .fair-letter {
+    font-family: system-ui; font-size: 1.6rem; font-weight: 900;
+    line-height: 1; color: #1e3a5f;
+  }
+  .fair-name {
+    font-family: system-ui; font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
+  }
+  .fair-score {
+    font-family: system-ui; font-size: 1.5rem; font-weight: 800;
+    color: #1e293b;
+  }
+  .check-row-ok     { color: var(--ok); }
+  .check-row-warn   { color: var(--warn); }
+  .check-row-error  { color: var(--error); }
+  .check-row-na     { color: #94a3b8; }
+
+  /* ── CQ table ── */
+  .cq-answered { background: #f0fdf4; }
+  .cq-partial  { background: #fffbeb; }
+  .cq-open     { background: #fafafa; }
+
+  /* ── Run button ── */
+  .run-btn {
+    font-family: system-ui; font-size: 0.78rem; font-weight: 600;
+    padding: .3rem .8rem; border-radius: 6px;
+    border: 1px solid var(--copi-blue);
+    background: var(--copi-blue); color: white; cursor: pointer;
+    transition: opacity .15s;
+  }
+  .run-btn:disabled { opacity: .5; cursor: default; }
+  .run-btn:not(:disabled):hover { opacity: .85; }
+
+  /* ── Score circle ── */
+  .score-circle {
+    width: 72px; height: 72px; border-radius: 50%;
+    border: 4px solid;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-family: system-ui; font-weight: 800; font-size: 1.15rem;
+  }
+
+  /* ── Pitfall accordion ── */
+  .pitfall-row {
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  .pitfall-row:last-child { border-bottom: none; }
+  .pitfall-toggle {
+    width: 100%; text-align: left; background: none; border: none;
+    padding: .65rem .1rem; cursor: pointer; display: flex;
+    align-items: center; gap: .75rem;
+  }
+  .pitfall-toggle:hover { background: var(--light); }
+  .pitfall-code {
+    font-family: monospace; font-size: .78rem; color: var(--muted);
+    flex-shrink: 0; width: 2.5rem;
+  }
+  .pitfall-name { flex: 1; font-weight: 600; text-align: left; }
+  .pitfall-body {
+    padding: .5rem 0 .75rem 3.25rem;
+    font-size: 0.82rem; color: #475569;
+  }
+  .affected-list {
+    font-family: monospace; font-size: 0.72rem;
+    color: #64748b; margin-top: .4rem;
+  }
+  .affected-list li { list-style: none; padding: .1rem 0; }
+  .affected-list li::before { content: "↳ "; color: #94a3b8; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Page header -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h4 class="mb-0" style="font-family:system-ui; font-weight:700;">Ontology Verification</h4>
+    <div class="text-muted" style="font-size:.83rem; font-family:system-ui; margin-top:.2rem;">
+      OOPS! · FOOPS! · OWL Consistency · Competency Questions
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="/enrich/docs" class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;">← Class Reference</a>
+    <button class="run-btn" id="runAllBtn" onclick="runAll()">▶ Run all checks</button>
+    <button class="btn btn-sm" onclick="document.getElementById('githubPushPanel').classList.toggle('d-none')"
+            style="background:#24292e; color:#fff; border:none; font-size:.8rem; border-radius:6px; padding:.35rem .75rem;">
+      🐙 Push to GitHub (PR)
+    </button>
+  </div>
+</div>
+
+{% if not has_ontology %}
+<div class="alert alert-warning mb-4">
+  <strong>No validated classes yet.</strong>
+  OOPS! and Consistency checks require at least one validated enrichment.
+  FOOPS! can still run against the ontology IRI.
+</div>
+{% endif %}
+
+<!-- Ontology meta bar -->
+<div class="d-flex gap-3 mb-4 flex-wrap" style="font-family:system-ui; font-size:.82rem;">
+  <span class="text-muted">IRI:</span>
+  <code style="font-size:.78rem;">{{ copi_iri }}</code>
+  <span class="text-muted ms-2">Validated classes:</span>
+  <strong>{{ enrichment_count }}</strong>
+  <span class="text-muted ms-2">TTL size:</span>
+  <strong>{{ "%.1f"|format(ttl_size / 1024) }} KB</strong>
+</div>
+
+<div class="row g-4">
+<div class="col-lg-8">
+
+<!-- ══ OOPS! ══════════════════════════════════════════════════════════════ -->
+<div class="check-panel" id="oopsPanel">
+  <div class="check-panel-header">
+    <div>
+      <div class="check-panel-title">
+        <span class="status-dot dot-idle" id="oopsDot"></span>OOPS! Ontology Pitfall Scanner
+      </div>
+      <div class="check-panel-subtitle">
+        Detects common modeling mistakes — <a href="https://oops.linkeddata.es" target="_blank" style="color:var(--muted);">oops.linkeddata.es</a>
+      </div>
+    </div>
+    <button class="run-btn" id="oopsBtn" onclick="runOops()">Run</button>
+  </div>
+  <div class="check-panel-body" id="oopsBody">
+    <div class="text-muted" style="font-size:.85rem; font-family:system-ui;">
+      Click <strong>Run</strong> to analyze the ontology against 41 pitfall patterns.
+    </div>
+  </div>
+</div>
+
+<!-- ══ Consistency ════════════════════════════════════════════════════════ -->
+<div class="check-panel" id="consistencyPanel">
+  <div class="check-panel-header">
+    <div>
+      <div class="check-panel-title">
+        <span class="status-dot dot-idle" id="consDot"></span>OWL 2 DL Consistency
+      </div>
+      <div class="check-panel-subtitle">
+        HermiT reasoner via owlready2 — detects unsatisfiable classes and axiom contradictions
+      </div>
+    </div>
+    <button class="run-btn" id="consBtn" onclick="runConsistency()">Run</button>
+  </div>
+  <div class="check-panel-body" id="consBody">
+    <div class="text-muted" style="font-size:.85rem; font-family:system-ui;">
+      Click <strong>Run</strong> to check ontology consistency using the HermiT OWL reasoner.
+    </div>
+  </div>
+</div>
+
+<!-- ══ FOOPS! ═════════════════════════════════════════════════════════════ -->
+<div class="check-panel" id="foopsPanel">
+  <div class="check-panel-header">
+    <div>
+      <div class="check-panel-title">
+        <span class="status-dot dot-idle" id="foopsDot"></span>FOOPS! FAIR Evaluation
+      </div>
+      <div class="check-panel-subtitle">
+        FAIR principles compliance for ontologies — <a href="https://foops.linkeddata.es" target="_blank" style="color:var(--muted);">foops.linkeddata.es</a>
+        · Requires the IRI to be publicly resolvable
+      </div>
+    </div>
+    <button class="run-btn" id="foopsBtn" onclick="runFoops()">Run</button>
+  </div>
+  <div class="check-panel-body" id="foopsBody">
+    <div class="text-muted" style="font-size:.85rem; font-family:system-ui;">
+      Click <strong>Run</strong> to evaluate FAIR compliance. Some checks will fail until the ontology
+      is deployed at <code style="font-size:.75rem;">{{ copi_iri }}</code>.
+    </div>
+  </div>
+</div>
+
+<!-- APV panel -->
+<div class="check-panel" id="apvPanel">
+  <div class="check-panel-header">
+    <div>
+      <div class="check-panel-title">
+        <span class="status-dot dot-idle" id="apvDot"></span>APV — Annotation Property Verification
+      </div>
+      <div class="check-panel-subtitle">
+        Verifies annotation constraints declared in the ontology itself via <code style="font-size:.75rem;">apv:</code> annotations —
+        URI patterns, language coverage, annotation cardinality, length and regex rules.
+        Runs locally against the combined Turtle export.<br>
+        <span style="color:#94a3b8;">Tool by <a href="https://github.com/rhpetry/Web-APV" target="_blank" style="color:#94a3b8;">Rafael H. Petry</a> — MSc CS, UFRGS, Apr 2026.</span>
+      </div>
+    </div>
+    <button class="run-btn" id="apvBtn" onclick="runApv()">Run</button>
+  </div>
+  <div class="check-panel-body" id="apvBody">
+    <div class="text-muted" style="font-size:.85rem; font-family:system-ui;">
+      Click <strong>Run</strong> to verify APV constraints. Add <code style="font-size:.75rem;">apv:</code>
+      annotations to the ontology header in <code style="font-size:.75rem;">copi-edit.owl</code> to configure rules.
+    </div>
+  </div>
+</div>
+
+<!-- ══ Definition Quality ════════════════════════════════════════════════ -->
+<div class="check-panel" id="qualityPanel">
+  <div class="check-panel-header">
+    <div>
+      <div class="check-panel-title">
+        <span class="status-dot dot-idle" id="qualityDot"></span>Definition Quality
+      </div>
+      <div class="check-panel-subtitle">
+        Checks Aristotelian structure (genus in definition), bilingual completeness,
+        semiformal axiom, Portuguese label, and circularity — across all validated/reviewed classes with a COPI ID.
+      </div>
+    </div>
+    <button class="run-btn" id="qualityBtn" onclick="runQualityBatch()">Run</button>
+  </div>
+  <div class="check-panel-body" id="qualityBody">
+    <div class="text-muted" style="font-size:.85rem; font-family:system-ui;">
+      Click <strong>Run</strong> to check definition quality across all classes with an assigned COPI IRI.
+    </div>
+  </div>
+</div>
+
+<!-- ══ GitHub Push ════════════════════════════════════════════════════════ -->
+<div class="check-panel d-none mt-4" id="githubPushPanel">
+  <div class="check-panel-header">
+    <div>
+      <div class="check-panel-title">🐙 Push to GitHub — INF-UFRGS-Ontologies/copi</div>
+      <div class="check-panel-subtitle">
+        Runs undeclared-class, HermiT consistency and OOPS Critical checks before pushing.
+        Creates a feature branch + PR against <code>main</code>; only the maintainer can merge.
+      </div>
+    </div>
+  </div>
+  <div class="check-panel-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label mb-1" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; color:#6b7280;">
+          GitHub PAT (repo + pull_request write)
+        </label>
+        <input type="password" id="ghToken" class="form-control form-control-sm" placeholder="ghp_… or github_pat_…">
+      </div>
+      <div class="col-md-5">
+        <label class="form-label mb-1" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; color:#6b7280;">
+          PR title / commit message (optional)
+        </label>
+        <input type="text" id="ghMsg" class="form-control form-control-sm" placeholder="Auto-generated if empty">
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-sm btn-dark w-100" onclick="pushToGitHub(this)">🐙 Open PR</button>
+      </div>
+    </div>
+    <div id="ghResult" class="mt-3" style="font-size:.82rem; display:none;"></div>
+  </div>
+</div>
+
+</div><!-- /col-lg-8 -->
+
+<!-- ══ CQ sidebar ════════════════════════════════════════════════════════ -->
+<div class="col-lg-4">
+  <div class="check-panel">
+    <div class="check-panel-header">
+      <div>
+        <div class="check-panel-title">Competency Questions</div>
+        <div class="check-panel-subtitle">
+          <a href="/requirements" style="color:var(--muted);">Manage CQs →</a>
+        </div>
+      </div>
+    </div>
+    <div class="check-panel-body">
+
+      {% if cq.total == 0 %}
+      <div class="text-center text-muted py-3" style="font-size:.85rem; font-family:system-ui;">
+        No competency questions defined yet.<br>
+        <a href="/requirements">Add CQs →</a>
+      </div>
+      {% else %}
+
+      <!-- Progress summary -->
+      <div class="d-flex gap-3 mb-3 justify-content-around text-center" style="font-family:system-ui;">
+        <div>
+          <div style="font-size:1.6rem; font-weight:800; color:var(--ok);">{{ cq.answered }}</div>
+          <div style="font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);">Answered</div>
+        </div>
+        <div>
+          <div style="font-size:1.6rem; font-weight:800; color:var(--warn);">{{ cq.partial }}</div>
+          <div style="font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);">Partial</div>
+        </div>
+        <div>
+          <div style="font-size:1.6rem; font-weight:800; color:#94a3b8;">{{ cq.open }}</div>
+          <div style="font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);">Open</div>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      {% set pct_answered = ((cq.answered / cq.total) * 100) | round(0) | int %}
+      {% set pct_partial  = ((cq.partial  / cq.total) * 100) | round(0) | int %}
+      <div class="progress mb-3" style="height:8px; border-radius:4px;">
+        <div class="progress-bar bg-success" style="width:{{ pct_answered }}%"></div>
+        <div class="progress-bar bg-warning" style="width:{{ pct_partial }}%"></div>
+      </div>
+
+      <!-- CQ list -->
+      <div style="max-height:380px; overflow-y:auto;">
+        {% for cq_row in cq.rows %}
+        <div class="p-2 mb-1 rounded cq-{{ cq_row.status }}"
+             style="font-size:.8rem; border:1px solid var(--border);">
+          <div class="d-flex justify-content-between align-items-start gap-1">
+            <div style="flex:1; font-style:italic; color:#374151;">{{ cq_row.text }}</div>
+            <span class="badge ms-1 flex-shrink-0
+              {% if cq_row.status == 'answered' %}bg-success
+              {% elif cq_row.status == 'partial' %}bg-warning text-dark
+              {% else %}bg-secondary{% endif %}"
+              style="font-size:.6rem;">{{ cq_row.status }}</span>
+          </div>
+          {% if cq_row.formal_expr %}
+          <div class="mt-1" style="font-family:monospace; font-size:.72rem; color:var(--muted);">{{ cq_row.formal_expr }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+</div><!-- /row -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // ── Utilities ────────────────────────────────────────────────────────────
+
+  function setDot(id, state) {
+    const el = document.getElementById(id);
+    el.className = 'status-dot dot-' + state;
+  }
+
+  function setBtn(id, disabled) {
+    document.getElementById(id).disabled = disabled;
+  }
+
+  function elapsed(s) {
+    return s < 60 ? `${s}s` : `${(s/60).toFixed(1)}min`;
+  }
+
+  // OOPS! pitfall remediation hints — keyed by pitfall code
+  const OOPS_HINTS = {
+    "P01": "Create a reciprocal <code>owl:inverseOf</code> declaration, or at minimum document why the inverse is intentionally absent.",
+    "P02": "Add <code>rdfs:domain</code> and <code>rdfs:range</code> axioms to each object/datatype property.",
+    "P03": "Add an <code>owl:equivalentClass</code> or <code>owl:sameAs</code> link to the equivalent external concept, or document the alignment decision.",
+    "P04": "Give each class and property an <code>rdfs:label</code> (in at least one language) and an <code>rdfs:comment</code> or <code>iof-av:naturalLanguageDefinition</code>.",
+    "P05": "Declare all leaf classes that share no common sibling as mutually <code>owl:disjointWith</code>.",
+    "P06": "Declare the property as <code>owl:FunctionalProperty</code>, or split it into two properties if multiple values are valid.",
+    "P07": "Merge or remove redundant class definitions. If intentional synonyms, use <code>owl:equivalentClass</code>.",
+    "P08": "Review <code>owl:equivalentClass</code> pairs for unintended logical merging of distinct concepts.",
+    "P10": "Replace the string-typed datatype property with an <code>owl:ObjectProperty</code> that points to a named individual or class.",
+    "P11": "Replace <code>rdfs:subPropertyOf</code> chain with explicit <code>owl:propertyChainAxiom</code>, or verify the hierarchy is intentional.",
+    "P12": "Declare the property as <code>owl:equivalentProperty</code> of the equivalent standard property rather than defining a new one.",
+    "P13": "Add <code>rdfs:range xsd:string</code> (or appropriate XSD type) to all datatype properties.",
+    "P19": "Ensure each class has at least one direct or inherited property to make it useful; or mark it explicitly as a grouping class.",
+    "P20": "Ensure every class node in the hierarchy is explicitly declared as <code>owl:Class</code>.",
+    "P21": "Add an <code>rdf:type owl:Ontology</code> declaration with <code>owl:versionIRI</code> and <code>rdfs:label</code>.",
+    "P22": "Add <code>iof-av:naturalLanguageDefinition</code> (or <code>rdfs:comment</code>) to all classes and properties.",
+    "P24": "Define an <code>owl:allValuesFrom</code> or <code>owl:equivalentClass</code> restriction to close the property for those subclasses.",
+    "P25": "Declare all sibling classes at each level as <code>owl:disjointWith</code> using <code>owl:AllDisjointClasses</code>.",
+    "P26": "Ensure the property can hold multiple values intentionally, or declare it <code>owl:FunctionalProperty</code>.",
+    "P29": "Remove the duplicate assertion, or use <code>owl:equivalentClass</code> if intentional.",
+    "P30": "Replace the property name with a more informative term and add an <code>rdfs:label</code>.",
+    "P31": "Use a URI naming convention (PascalCase for classes, camelCase for properties) and add <code>rdfs:label</code> for display.",
+    "P34": "Define disjointness between the unconnected subhierarchies, or add a shared superclass.",
+    "P36": "Reify or refactor the property as an intermediate class if it needs additional attributes.",
+    "P38": "Remove or correct the <code>rdfs:subClassOf</code> cycle; use <code>owl:equivalentClass</code> if the classes are truly equivalent.",
+    "P39": "Remove the self-referential <code>rdf:type</code> or <code>rdfs:subClassOf</code> triple.",
+    "P41": "Review the use of <code>owl:oneOf</code> to ensure it does not inadvertently close the class beyond intent.",
+  };
+
+  function severityClass(imp) {
+    if (!imp) return 'sev-minor';
+    return 'sev-' + imp.toLowerCase();
+  }
+
+  function statusIcon(status) {
+    if (status === 'ok')             return '<span style="color:#16a34a;">✓</span>';
+    if (status === 'warning')        return '<span style="color:#d97706;">⚠</span>';
+    if (status === 'error' || status === 'failed') return '<span style="color:#dc2626;">✗</span>';
+    return '<span style="color:#94a3b8;">—</span>';
+  }
+
+  function scoreColor(s) {
+    if (s === null || s === undefined) return '#94a3b8';
+    if (s >= 0.75) return '#16a34a';
+    if (s >= 0.4)  return '#d97706';
+    return '#dc2626';
+  }
+
+  // ── OOPS! ────────────────────────────────────────────────────────────────
+
+  async function runOops() {
+    setDot('oopsDot', 'running'); setBtn('oopsBtn', true);
+    setBtn('runAllBtn', true);
+    document.getElementById('oopsBody').innerHTML = `
+      <div class="d-flex align-items-center gap-2 text-muted" style="font-size:.85rem; font-family:system-ui;">
+        <div class="spinner-border spinner-border-sm text-primary"></div>
+        Sending ontology to OOPS! — this may take up to 60 seconds…
+      </div>`;
+
+    try {
+      const resp = await fetch('/enrich/verify/oops', {method:'POST'});
+      const data = await resp.json();
+
+      if (!data.ok) {
+        setDot('oopsDot', 'error');
+        document.getElementById('oopsBody').innerHTML =
+          `<div class="alert alert-danger mb-0" style="font-size:.85rem;">${data.error}</div>`;
+        return;
+      }
+
+      const {pitfalls, counts, elapsed: el} = data;
+      const total = pitfalls.length;
+      const dotState = counts.Critical > 0 ? 'error' : counts.Important > 0 ? 'warn' : total === 0 ? 'ok' : 'warn';
+      setDot('oopsDot', dotState);
+
+      let html = `<div class="d-flex gap-3 mb-3 flex-wrap align-items-center" style="font-family:system-ui; font-size:.82rem;">`;
+      if (total === 0) {
+        html += `<span style="color:var(--ok); font-weight:700;">✓ No pitfalls found</span>`;
+      } else {
+        if (counts.Critical)  html += `<span class="sev-pill sev-critical">${counts.Critical} Critical</span>`;
+        if (counts.Important) html += `<span class="sev-pill sev-important">${counts.Important} Important</span>`;
+        if (counts.Minor)     html += `<span class="sev-pill sev-minor">${counts.Minor} Minor</span>`;
+      }
+      html += `<span class="text-muted ms-auto">${elapsed(el)}</span></div>`;
+
+      if (total > 0) {
+        html += `<div>`;
+        pitfalls.forEach(p => {
+          const affHtml = p.affected.length
+            ? `<ul class="affected-list mt-1">${p.affected.map(a => `<li>${a}</li>`).join('')}</ul>`
+            : '';
+          const hint = OOPS_HINTS[p.code];
+          const hintHtml = hint
+            ? `<div class="mt-2 p-2 rounded" style="background:#f0fdf4;border:1px solid #bbf7d0;font-size:0.78rem;">
+                <strong style="color:#166534;">How to fix:</strong> ${hint}
+               </div>`
+            : '';
+          html += `
+            <div class="pitfall-row">
+              <button class="pitfall-toggle" onclick="this.nextElementSibling.classList.toggle('d-none')">
+                <span class="pitfall-code">${p.code}</span>
+                <span class="sev-pill ${severityClass(p.importance)}">${p.importance}</span>
+                <span class="pitfall-name">${p.name}</span>
+                <span style="color:#94a3b8; font-size:.72rem; flex-shrink:0;">${p.affected.length} element${p.affected.length!==1?'s':''}</span>
+                <span style="color:#94a3b8; font-size:.85rem;">▾</span>
+              </button>
+              <div class="pitfall-body d-none">
+                <div>${p.description}</div>
+                ${affHtml}
+                ${hintHtml}
+              </div>
+            </div>`;
+        });
+        html += `</div>`;
+      }
+
+      document.getElementById('oopsBody').innerHTML = html;
+    } catch(e) {
+      setDot('oopsDot', 'error');
+      document.getElementById('oopsBody').innerHTML =
+        `<div class="alert alert-danger mb-0">Network error: ${e.message}</div>`;
+    } finally {
+      setBtn('oopsBtn', false);
+      checkAllDone();
+    }
+  }
+
+  // ── OWL Consistency ──────────────────────────────────────────────────────
+
+  const INF_KIND_LABEL = {
+    subClassOf:      { label: 'subClassOf',      css: 'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;' },
+    equivalentClass: { label: 'equivalentClass', css: 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;' },
+    unsatisfiable:   { label: 'unsatisfiable ⊥', css: 'background:#fee2e2;color:#991b1b;border:1px solid #fecaca;' },
+  };
+
+  function kindPill(kind) {
+    const k = INF_KIND_LABEL[kind] || { label: kind, css: '' };
+    return `<span style="font-size:.65rem;font-family:monospace;border-radius:3px;padding:.1rem .35rem;${k.css}">${k.label}</span>`;
+  }
+
+  async function runConsistency() {
+    setDot('consDot', 'running'); setBtn('consBtn', true);
+    setBtn('runAllBtn', true);
+    document.getElementById('consBody').innerHTML = `
+      <div class="d-flex align-items-center gap-2 text-muted" style="font-size:.85rem; font-family:system-ui;">
+        <div class="spinner-border spinner-border-sm text-primary"></div>
+        Running HermiT reasoner — may take 10–30 s…
+      </div>`;
+
+    try {
+      const resp = await fetch('/enrich/verify/consistency', {method:'POST'});
+      const data = await resp.json();
+
+      if (!data.ok) {
+        setDot('consDot', 'error');
+        document.getElementById('consBody').innerHTML =
+          `<div class="alert alert-danger mb-0" style="font-size:.85rem;">${data.error}</div>`;
+        return;
+      }
+
+      setDot('consDot', data.consistent ? 'ok' : 'error');
+
+      const infs = data.inferences || [];
+      const subCOf  = infs.filter(i => i.kind === 'subClassOf');
+      const equivCls = infs.filter(i => i.kind === 'equivalentClass');
+      const unsat   = infs.filter(i => i.kind === 'unsatisfiable');
+
+      let html = `<div class="d-flex gap-4 align-items-center mb-3">`;
+      if (data.consistent) {
+        html += `<div style="font-size:2rem; color:var(--ok);">✓</div>
+          <div style="font-family:system-ui;">
+            <div style="font-weight:700; color:var(--ok);">Ontology is consistent</div>
+            <div style="font-size:.8rem; color:var(--muted);">
+              ${data.class_count} class${data.class_count!==1?'es':''} ·
+              ${infs.length} inference${infs.length!==1?'s':''} ·
+              ${elapsed(data.elapsed)}
+            </div>
+          </div>`;
+      } else {
+        html += `<div style="font-size:2rem; color:var(--error);">✗</div>
+          <div style="font-family:system-ui;">
+            <div style="font-weight:700; color:var(--error);">Ontology is INCONSISTENT</div>
+            <div style="font-size:.8rem; color:var(--muted);">
+              ${unsat.length} unsatisfiable class${unsat.length!==1?'es':''}
+            </div>
+          </div>`;
+      }
+      html += `</div>`;
+
+      // ── Inferences table ──────────────────────────────────────────────────
+      if (infs.length > 0) {
+        // Group by class for a cleaner display
+        const byClass = {};
+        infs.forEach(i => {
+          if (!byClass[i.cls_label]) byClass[i.cls_label] = [];
+          byClass[i.cls_label].push(i);
+        });
+
+        html += `
+          <div style="font-size:.75rem; font-weight:700; text-transform:uppercase;
+               letter-spacing:.07em; color:var(--muted); margin-bottom:.6rem;">
+            Inferences (${infs.length})
+            <span style="font-weight:400; text-transform:none; letter-spacing:0;">
+              — new axioms derived by the reasoner beyond the explicit TBox
+            </span>
+          </div>
+          <div style="border:1px solid var(--border); border-radius:6px; overflow:hidden;">
+          <table class="table table-sm mb-0" style="font-size:.82rem;">
+          <thead style="background:var(--light); font-size:.72rem; text-transform:uppercase;
+                        letter-spacing:.06em; color:var(--muted);">
+            <tr>
+              <th style="width:30%;">Class</th>
+              <th style="width:18%;">Inference</th>
+              <th>Inferred axiom target</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+        Object.entries(byClass).forEach(([cls, rows]) => {
+          rows.forEach((inf, idx) => {
+            html += `<tr>`;
+            if (idx === 0) {
+              html += `<td rowspan="${rows.length}" style="font-family:monospace; font-weight:600;
+                           color:#1e3a5f; vertical-align:middle; border-right:1px solid var(--border);">
+                         copi:${cls}</td>`;
+            }
+            html += `
+              <td style="vertical-align:middle;">${kindPill(inf.kind)}</td>
+              <td style="font-family:monospace; font-size:.8rem; color:#374151; vertical-align:middle;">
+                ${inf.target_iri.startsWith('http') ? inf.target_label : inf.target_iri}
+                <span style="color:#94a3b8; font-size:.68rem; display:block; line-height:1.2;">
+                  ${inf.target_iri}
+                </span>
+              </td>
+            </tr>`;
+          });
+        });
+
+        html += `</tbody></table></div>`;
+      } else if (data.consistent) {
+        html += `<div class="text-muted" style="font-size:.83rem; font-style:italic;">
+          No new inferences beyond the explicit axioms.
+        </div>`;
+      }
+
+      document.getElementById('consBody').innerHTML = html;
+    } catch(e) {
+      setDot('consDot', 'error');
+      document.getElementById('consBody').innerHTML =
+        `<div class="alert alert-danger mb-0">Network error: ${e.message}</div>`;
+    } finally {
+      setBtn('consBtn', false);
+      checkAllDone();
+    }
+  }
+
+  // ── FOOPS! ───────────────────────────────────────────────────────────────
+
+  async function runFoops() {
+    setDot('foopsDot', 'running'); setBtn('foopsBtn', true);
+    setBtn('runAllBtn', true);
+    document.getElementById('foopsBody').innerHTML = `
+      <div class="d-flex align-items-center gap-2 text-muted" style="font-size:.85rem; font-family:system-ui;">
+        <div class="spinner-border spinner-border-sm text-primary"></div>
+        Evaluating FAIR compliance via FOOPS!…
+      </div>`;
+
+    try {
+      const resp = await fetch('/enrich/verify/foops', {method:'POST'});
+      const data = await resp.json();
+
+      if (!data.ok) {
+        setDot('foopsDot', 'warn');
+        document.getElementById('foopsBody').innerHTML =
+          `<div class="alert alert-warning mb-0 d-flex align-items-center justify-content-between gap-3" style="font-size:.85rem;">
+             <span>${data.error}</span>
+             <button class="btn btn-sm btn-outline-dark flex-shrink-0" onclick="runFoops()">↻ Retry</button>
+           </div>`;
+        return;
+      }
+
+      const score = data.overall_score;
+      const dotState = score >= 0.6 ? 'ok' : score >= 0.35 ? 'warn' : 'error';
+      setDot('foopsDot', dotState);
+
+      const pct = score !== null ? Math.round(score * 100) : '?';
+      const color = scoreColor(score);
+
+      let html = `<div class="d-flex gap-4 align-items-start mb-3 flex-wrap">
+        <div class="score-circle" style="border-color:${color}; color:${color};">${pct}%</div>
+        <div style="font-family:system-ui;">
+          <div style="font-weight:700; font-size:1rem;">Overall FAIR score</div>
+          <div style="font-size:.8rem; color:var(--muted);">${data.ontology_title || data.ontology_uri} · ${elapsed(data.elapsed)}</div>
+          <div style="font-size:.72rem; color:var(--muted); margin-top:.2rem;">Evaluated: <a href="${data.evaluated_iri}" target="_blank" style="color:var(--muted);">${data.evaluated_iri}</a></div>
+          <div class="mt-2 d-flex gap-2 flex-wrap">`;
+
+      const FAIR = ['Findable','Accessible','Interoperable','Reusable'];
+      FAIR.forEach(cat => {
+        const checks = data.categories[cat]?.checks || [];
+        const s = data.categories[cat]?.score;
+        const pctCat = s !== null && s !== undefined ? Math.round(s * 100) : '?';
+        html += `<span style="font-size:.75rem; font-weight:700; color:${scoreColor(s)};">
+          ${cat[0]}: ${pctCat}%</span>`;
+      });
+      html += `</div></div></div>`;
+
+      // Per-category details
+      FAIR.forEach(cat => {
+        const checks = data.categories[cat]?.checks || [];
+        if (!checks.length) return;
+        html += `<div class="mb-3">
+          <div style="font-family:system-ui; font-size:.72rem; font-weight:700; text-transform:uppercase;
+               letter-spacing:.08em; color:var(--muted); margin-bottom:.5rem;">${cat}</div>
+          <table class="table table-sm" style="font-size:.82rem;">
+          <tbody>`;
+        checks.forEach(c => {
+          html += `<tr>
+            <td style="width:2rem; text-align:center;">${statusIcon(c.status)}</td>
+            <td style="font-family:monospace; font-size:.72rem; color:var(--muted); width:4.5rem;">${c.abbreviation}</td>
+            <td>
+              <div style="font-weight:600;">${c.title}</div>
+              <div style="font-size:.75rem; color:var(--muted);">${c.explanation}</div>
+            </td>
+          </tr>`;
+        });
+        html += `</tbody></table></div>`;
+      });
+
+      document.getElementById('foopsBody').innerHTML = html;
+    } catch(e) {
+      setDot('foopsDot', 'error');
+      document.getElementById('foopsBody').innerHTML =
+        `<div class="alert alert-danger mb-0">Network error: ${e.message}</div>`;
+    } finally {
+      setBtn('foopsBtn', false);
+      checkAllDone();
+    }
+  }
+
+  // ── APV ──────────────────────────────────────────────────────────────────
+
+  async function runApv() {
+    setDot('apvDot', 'running'); setBtn('apvBtn', true);
+    document.getElementById('apvBody').innerHTML =
+      `<div class="text-muted" style="font-size:.85rem;">Running APV checks…</div>`;
+    try {
+      const resp = await fetch('/enrich/verify/apv', {method:'POST'});
+      const d = await resp.json();
+
+      if (d.error) {
+        setDot('apvDot', 'error');
+        document.getElementById('apvBody').innerHTML =
+          `<div class="alert alert-danger mb-0">${d.error}</div>`;
+        return;
+      }
+
+      const totalViolations = d.violation_count || 0;
+      setDot('apvDot', totalViolations > 0 ? 'warn' : 'ok');
+
+      // Constraints table
+      let html = `<div style="margin-bottom:1rem;">
+        <div style="font-weight:600; font-size:.85rem; margin-bottom:.5rem; color:var(--muted);">Constraints declared in ontology</div>
+        <table class="table table-sm table-bordered" style="font-size:.78rem;">
+          <thead><tr><th>Constraint</th><th>Value</th></tr></thead><tbody>`;
+      let hasConstraints = false;
+      for (const [k, v] of Object.entries(d.constraints || {})) {
+        if (v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0)) {
+          hasConstraints = true;
+          const val = Array.isArray(v) ? v.join(', ') : String(v);
+          html += `<tr><td style="font-family:monospace;">${k}</td><td>${val}</td></tr>`;
+        }
+      }
+      if (!hasConstraints) {
+        html += `<tr><td colspan="2" class="text-muted">No APV constraints found in ontology. Add <code>apv:</code> annotations to copi-edit.owl to configure rules.</td></tr>`;
+      }
+      html += `</tbody></table></div>`;
+
+      // Violations
+      html += `<div style="font-weight:600; font-size:.85rem; margin-bottom:.5rem; color:var(--muted);">
+        Violations (${totalViolations} total)</div>`;
+
+      for (const check of (d.violations || [])) {
+        const count = check.violations.length;
+        const state = count > 0 ? 'danger' : 'success';
+        const icon  = count > 0 ? '✗' : '✓';
+        html += `<details style="margin-bottom:.5rem;" ${count > 0 ? 'open' : ''}>
+          <summary style="cursor:pointer; padding:.4rem .6rem; border-radius:6px;
+                          background:${count > 0 ? '#fff5f5' : '#f0fdf4'};
+                          border:1px solid ${count > 0 ? '#fecaca' : '#bbf7d0'};
+                          font-size:.82rem; font-weight:600; list-style:none;">
+            <span style="color:${count > 0 ? '#dc2626' : '#16a34a'};">${icon}</span>
+            &nbsp;${check.check}
+            <span style="font-weight:400; color:var(--muted); margin-left:.5rem;">${count} issue${count !== 1 ? 's' : ''}</span>
+          </summary>
+          <div style="padding:.5rem .6rem .3rem; font-size:.78rem; color:var(--muted);">${check.purpose || ''}</div>`;
+        if (count > 0) {
+          html += `<ul style="margin:.3rem 0 .4rem 1.2rem; font-size:.78rem;">`;
+          for (const v of check.violations) {
+            const txt = Array.isArray(v) ? v.join(' → ') : String(v);
+            html += `<li style="font-family:monospace;">${txt}</li>`;
+          }
+          html += `</ul>`;
+        }
+        html += `</details>`;
+      }
+
+      document.getElementById('apvBody').innerHTML = html;
+    } catch(e) {
+      setDot('apvDot', 'error');
+      document.getElementById('apvBody').innerHTML =
+        `<div class="alert alert-danger mb-0">Network error: ${e.message}</div>`;
+    } finally {
+      setBtn('apvBtn', false);
+      checkAllDone();
+    }
+  }
+
+  // ── Definition Quality ───────────────────────────────────────────────────
+
+  function _esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function runQualityBatch() {
+    const btn = document.getElementById('qualityBtn');
+    const body = document.getElementById('qualityBody');
+    const dot = document.getElementById('qualityDot');
+
+    btn.disabled = true;
+    btn.textContent = 'Running…';
+    dot.className = 'status-dot dot-running';
+    body.innerHTML = '<div class="text-muted" style="font-size:.85rem;">Running quality checks…</div>';
+
+    fetch('/enrich/quality/batch')
+      .then(r => r.json())
+      .then(data => {
+        btn.disabled = false;
+        btn.textContent = 'Run';
+
+        if (!data.ok) {
+          dot.className = 'status-dot dot-error';
+          body.innerHTML = `<div class="text-danger">Error: ${data.error || 'Unknown error'}</div>`;
+          checkAllDone();
+          return;
+        }
+
+        const withIssues = data.with_issues;
+        const total = data.total;
+
+        if (withIssues === 0) {
+          dot.className = 'status-dot dot-ok';
+          body.innerHTML = `<div class="text-success fw-semibold">✓ All ${total} class${total !== 1 ? 'es' : ''} passed all quality checks.</div>`;
+          checkAllDone();
+          return;
+        }
+
+        dot.className = 'status-dot dot-warn';
+
+        const rows = data.results.map(r => {
+          const label = _esc(r.cluster_label);
+          if (r.issue_count === 0) {
+            return `<tr>
+              <td><a href="/enrich/${r.id}" target="_blank">${label}</a></td>
+              <td><span class="text-success">✓</span></td>
+              <td class="text-muted" style="font-size:.8rem;">—</td>
+            </tr>`;
+          }
+          const msgs = r.issues.map(i =>
+            `<span class="badge bg-warning-subtle text-warning border border-warning-subtle me-1" style="font-size:.72rem;">${_esc(i.field)}: ${_esc(i.message)}</span>`
+          ).join('');
+          return `<tr>
+            <td><a href="/enrich/${r.id}" target="_blank">${label}</a></td>
+            <td><span class="text-warning fw-semibold">⚠ ${r.issue_count}</span></td>
+            <td>${msgs}</td>
+          </tr>`;
+        }).join('');
+
+        body.innerHTML = `
+          <div class="mb-3" style="font-size:.85rem;">
+            <span class="text-warning fw-semibold">⚠ ${withIssues} class${withIssues !== 1 ? 'es' : ''} with issues</span>
+            <span class="text-muted ms-2">out of ${total} checked</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="table table-sm table-hover" style="font-size:.82rem;">
+              <thead>
+                <tr>
+                  <th style="width:200px;">Class</th>
+                  <th style="width:80px;">Issues</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>`;
+        checkAllDone();
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.textContent = 'Run';
+        dot.className = 'status-dot dot-error';
+        body.innerHTML = `<div class="text-danger">Request failed: ${err}</div>`;
+        checkAllDone();
+      });
+  }
+
+  // ── Run all ──────────────────────────────────────────────────────────────
+
+  let _running = new Set();
+
+  async function runAll() {
+    setBtn('runAllBtn', true);
+    // Fire all five in parallel
+    await Promise.allSettled([runOops(), runConsistency(), runFoops(), runApv(), runQualityBatch()]);
+  }
+
+  function checkAllDone() {
+    const stillRunning = ['oopsBtn','consBtn','foopsBtn','apvBtn','qualityBtn'].some(id =>
+      document.getElementById(id).disabled
+    );
+    if (!stillRunning) setBtn('runAllBtn', false);
+  }
+
+  // ── GitHub push ───────────────────────────────────────────────────────────
+
+  async function pushToGitHub(btn) {
+    const token  = document.getElementById('ghToken').value.trim();
+    const msg    = document.getElementById('ghMsg').value.trim();
+    const result = document.getElementById('ghResult');
+
+    if (!token) {
+      result.style.display = '';
+      result.innerHTML = '<div class="alert alert-danger mb-0">GitHub PAT is required.</div>';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Running preflight checks…';
+    result.style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('github_token', token);
+    if (msg) fd.append('commit_msg', msg);
+
+    try {
+      const resp = await fetch('/enrich/export/github', { method: 'POST', body: fd });
+      const data = await resp.json();
+      result.style.display = '';
+
+      if (resp.ok && data.ok) {
+        let html = `<div class="alert alert-success mb-2">
+          ✓ PR created for <strong>${data.classes}</strong> class(es) (${data.version_date}).
+          ${data.docs_files ? ` ${data.docs_files} doc file(s) committed to <code>docs/</code>.` : ''}
+          ${data.pr_url ? `<br><a href="${data.pr_url}" target="_blank">View pull request →</a>` : ''}
+        </div>`;
+
+        const warnings = data.preflight?.oops_warnings || [];
+        if (warnings.length) {
+          html += `<div class="alert alert-warning mb-0" style="font-size:.8rem;">
+            <strong>OOPS warnings (non-blocking):</strong>
+            <ul class="mb-0 mt-1">
+              ${warnings.map(w => `<li>${w.code} — ${w.name} (${w.importance}, ${w.affected_count} affected)</li>`).join('')}
+            </ul>
+          </div>`;
+        }
+        result.innerHTML = html;
+      } else {
+        const detail = data.detail || {};
+        const check  = detail.check || 'unknown';
+        const errMsg = detail.message || JSON.stringify(data);
+        let html = `<div class="alert alert-danger mb-2"><strong>Pre-flight failed [${check}]:</strong> ${errMsg}</div>`;
+
+        if (detail.details?.length) {
+          html += `<ul style="font-size:.8rem; margin-bottom:0;">
+            ${detail.details.map(d =>
+              typeof d === 'string'
+                ? `<li><code>${d}</code></li>`
+                : `<li><strong>${d.code}</strong> — ${d.name} (${d.affected_count} affected)${d.affected_sample?.length ? ': ' + d.affected_sample.slice(0,3).join(', ') : ''}</li>`
+            ).join('')}
+          </ul>`;
+        }
+        result.innerHTML = html;
+      }
+    } catch (e) {
+      result.style.display = '';
+      result.innerHTML = `<div class="alert alert-danger mb-0">Network error: ${e.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🐙 Open PR';
+    }
+  }
+</script>
+{% endblock %}

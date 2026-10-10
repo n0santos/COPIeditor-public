@@ -1,0 +1,725 @@
+{% extends "base.html" %}
+{% block title %}Requirements — COPI Editor{% endblock %}
+
+{% block head %}
+<style>
+  .cq-card {
+    background: white;
+    border: 1px solid var(--copi-border);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    transition: box-shadow .15s;
+  }
+  .cq-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+  .cq-status-open     { border-left: 3px solid #f59e0b; }
+  .cq-status-partial  { border-left: 3px solid #3b82f6; }
+  .cq-status-answered { border-left: 3px solid #22c55e; }
+  .sc-card { border-left: 3px solid #8b5cf6; }
+
+  .status-pill {
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 0.15rem 0.5rem; border-radius: 20px;
+  }
+  .pill-open     { background: #fef3c7; color: #92400e; }
+  .pill-partial  { background: #dbeafe; color: #1e40af; }
+  .pill-answered { background: #dcfce7; color: #166534; }
+  .pill-draft      { background: #f5f3ff; color: #5b21b6; }
+  .pill-active     { background: #ede9fe; color: #4c1d95; }
+  .pill-deprecated { background: #f1f5f9; color: #64748b; }
+
+  .cq-text { font-size: 1rem; color: #1e293b; line-height: 1.5; }
+  .cq-formal {
+    font-family: monospace; font-size: 0.82rem;
+    background: #f8fafc; border: 1px solid var(--copi-border);
+    border-radius: 4px; padding: 0.5rem 0.75rem; margin-top: 0.5rem;
+    color: #1d4ed8;
+  }
+  .cq-class-pill {
+    display: inline-block;
+    background: #eff6ff; border: 1px solid #bfdbfe;
+    border-radius: 4px; padding: 0.1rem 0.45rem;
+    font-size: 0.75rem; font-family: monospace; color: #1d4ed8;
+    margin: 0.1rem;
+  }
+  .actor-pill {
+    display: inline-block;
+    background: #f5f3ff; border: 1px solid #ddd6fe;
+    border-radius: 4px; padding: 0.1rem 0.45rem;
+    font-size: 0.75rem; color: #6b21a8;
+    margin: 0.1rem;
+  }
+  .section-label {
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--copi-muted); margin-bottom: 0.25rem;
+  }
+  .add-form-card {
+    background: white;
+    border: 1px solid var(--copi-border);
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+  .sc-link {
+    color: #7c3aed; text-decoration: none; font-size: 0.78rem;
+  }
+  .sc-link:hover { text-decoration: underline; }
+
+  /* ORSD header */
+  .orsd-header-card {
+    background: #f8fafc;
+    border: 1px solid var(--copi-border);
+    border-left: 4px solid #6366f1;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .orsd-ontology-title {
+    font-size: 1.05rem; font-weight: 600; color: #1e293b;
+    letter-spacing: -0.01em;
+    padding-bottom: 0.75rem; margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--copi-border);
+  }
+  .orsd-field-label {
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--copi-muted); margin-bottom: 0.2rem;
+  }
+  .orsd-field-value {
+    font-size: 0.92rem; color: #1e293b; line-height: 1.5;
+  }
+  .use-pill {
+    display: inline-block;
+    background: #eff6ff; border: 1px solid #bfdbfe;
+    border-radius: 4px; padding: 0.1rem 0.45rem;
+    font-size: 0.75rem; color: #1d4ed8; margin: 0.1rem;
+  }
+
+  /* NFR */
+  .nfr-card {
+    background: white; border: 1px solid var(--copi-border);
+    border-radius: 6px; margin-bottom: 0.5rem; padding: 0.65rem 0.9rem;
+    display: flex; align-items: flex-start; gap: 0.75rem;
+  }
+  .nfr-id {
+    font-size: 0.72rem; color: #64748b;
+    min-width: 3.5rem; font-variant-numeric: tabular-nums; padding-top: 0.15rem;
+  }
+  .nfr-text { font-size: 0.88rem; color: #1e293b; flex: 1; }
+
+  /* NFR category pill colours */
+  .nfr-cat-language     { background:#dbeafe; color:#1e40af; }
+  .nfr-cat-license      { background:#fef3c7; color:#92400e; }
+  .nfr-cat-methodology  { background:#f5f3ff; color:#5b21b6; }
+  .nfr-cat-modelling    { background:#ccfbf1; color:#0f766e; }
+  .nfr-cat-documentation{ background:#f1f5f9; color:#475569; }
+  .nfr-cat-pill {
+    display: inline-block; border-radius: 4px; padding: 0.12rem 0.45rem;
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.05em; white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* Section header with bottom rule */
+  .section-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 0.4rem; margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--copi-border);
+  }
+  .section-head h5 { margin: 0; }
+
+  /* Toggle chevron button */
+  .section-toggle {
+    background: none; border: 1px solid var(--copi-border);
+    border-radius: 4px; padding: 0.18rem 0.55rem;
+    font-size: 0.8rem; color: var(--copi-muted); cursor: pointer;
+    line-height: 1;
+  }
+  .section-toggle:hover { border-color: #94a3b8; color: #475569; }
+  .section-toggle .chev {
+    display: inline-block; transition: transform 0.15s;
+  }
+  .section-toggle[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ══ ORSD Header ══ -->
+<div class="section-head mb-2">
+  <div>
+    <h5>Ontology Requirements Specification</h5>
+    <small class="text-muted">LOT ORSD header</small>
+  </div>
+  <button class="section-toggle" type="button"
+          data-bs-toggle="collapse" data-bs-target="#orsdCollapse"
+          aria-expanded="true" aria-controls="orsdCollapse">
+    <span class="chev">▾</span>
+  </button>
+</div>
+
+<div class="collapse show mb-4" id="orsdCollapse">
+  <div class="orsd-header-card">
+    <div class="orsd-ontology-title">{{ orsd.ontology_name or '—' }}</div>
+    <div class="row g-3">
+      <div class="col-md-8">
+        <div class="orsd-field-label">Purpose</div>
+        <div class="orsd-field-value">{{ orsd.purpose or '—' }}</div>
+      </div>
+      <div class="col-md-4">
+        <div class="orsd-field-label">Implementation language</div>
+        <div class="orsd-field-value">{{ orsd.implementation_language or '—' }}</div>
+      </div>
+      <div class="col-12">
+        <div class="orsd-field-label">Scope</div>
+        <div class="orsd-field-value">{{ orsd.scope or '—' }}</div>
+      </div>
+      {% if orsd.intended_users %}
+      <div class="col-md-6">
+        <div class="orsd-field-label">Intended end-users</div>
+        <div>
+          {% for u in orsd.intended_users %}
+          <span class="actor-pill">{{ u }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if orsd.intended_uses %}
+      <div class="col-md-6">
+        <div class="orsd-field-label">Intended uses</div>
+        <div>
+          {% for u in orsd.intended_uses %}
+          <span class="use-pill">{{ u }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ══ Non-Functional Requirements ══ -->
+<div class="section-head mb-2">
+  <div>
+    <h5>Non-Functional Requirements</h5>
+    <small class="text-muted">{{ nfrs | length }} requirement{{ 's' if nfrs | length != 1 }}</small>
+  </div>
+  <button class="section-toggle" type="button"
+          data-bs-toggle="collapse" data-bs-target="#nfrCollapse"
+          aria-expanded="true" aria-controls="nfrCollapse">
+    <span class="chev">▾</span>
+  </button>
+</div>
+
+<div class="collapse show mb-4" id="nfrCollapse">
+  {% for nfr in nfrs %}
+  <div class="nfr-card" id="nfr-{{ nfr.id }}">
+    <div class="nfr-id pt-1">NFR-{{ nfr.id }}</div>
+    <div style="flex:1;">
+      <!-- Display mode -->
+      <div id="nfr-display-{{ nfr.id }}" class="d-flex align-items-start gap-2">
+        <span class="nfr-cat-pill nfr-cat-{{ nfr.category }}">{{ nfr.category }}</span>
+        <span class="nfr-text">{{ nfr.text }}</span>
+      </div>
+      {% if request.state.user %}
+      <!-- Edit mode -->
+      <div id="nfr-edit-{{ nfr.id }}" style="display:none;">
+        <div class="row g-2 mt-1">
+          <div class="col-sm-4">
+            <select id="nfr-cat-{{ nfr.id }}" class="form-select form-select-sm">
+              {% for cat in ['language','license','methodology','modelling','documentation'] %}
+              <option value="{{ cat }}" {% if nfr.category == cat %}selected{% endif %}>{{ cat }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-sm-8">
+            <input type="text" id="nfr-txt-{{ nfr.id }}" class="form-control form-control-sm"
+                   value="{{ nfr.text }}">
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-sm btn-primary" onclick="saveNFR({{ nfr.id }})">Save</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="toggleNFREdit({{ nfr.id }})">Cancel</button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% if request.state.user %}
+    <div class="d-flex gap-1 pt-1">
+      <button class="btn btn-sm btn-outline-secondary"
+              style="font-size:0.72rem; padding:0.15rem 0.5rem;"
+              onclick="toggleNFREdit({{ nfr.id }})">Edit</button>
+      <form method="post" action="/requirements/nfr/{{ nfr.id }}/delete"
+            onsubmit="return confirm('Delete NFR-{{ nfr.id }}?');" style="margin:0;">
+        <button type="submit" class="btn btn-sm btn-outline-danger"
+                style="font-size:0.72rem; padding:0.15rem 0.5rem;">✕</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {% if request.state.user %}
+  <!-- Add NFR inline form -->
+  <form method="post" action="/requirements/nfr" class="d-flex gap-2 mt-2 align-items-end">
+    <div>
+      <select name="category" class="form-select form-select-sm" style="width:auto;">
+        <option value="language">language</option>
+        <option value="license">license</option>
+        <option value="methodology">methodology</option>
+        <option value="modelling">modelling</option>
+        <option value="documentation">documentation</option>
+      </select>
+    </div>
+    <div style="flex:1;">
+      <input type="text" name="text" class="form-control form-control-sm"
+             placeholder="Requirement statement…" required>
+    </div>
+    <div>
+      <button type="submit" class="btn btn-sm btn-outline-primary">+ Add NFR</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+
+<div style="border-top:1px solid var(--copi-border); margin-bottom: 1.5rem;"></div>
+
+<div class="row g-4">
+
+  <!-- ══ Left column: Scenarios + CQs ══ -->
+  <div class="col-lg-8">
+
+    <!-- ── Scenarios section ── -->
+    <div class="section-head mb-2">
+      <div>
+        <h5>Motivating Scenarios</h5>
+        <small class="text-muted">{{ scenarios | length }} scenario{{ 's' if scenarios | length != 1 }}</small>
+      </div>
+      {% if scenarios %}
+      <button class="section-toggle" type="button"
+              data-bs-toggle="collapse" data-bs-target="#scenariosCollapse"
+              aria-expanded="true" aria-controls="scenariosCollapse">
+        <span class="chev">▾</span>
+      </button>
+      {% endif %}
+    </div>
+
+    <div class="collapse {% if scenarios %}show{% endif %}" id="scenariosCollapse">
+      {% if scenarios %}
+      {% for sc in scenarios %}
+      <div class="cq-card sc-card" id="sc-{{ sc.id }}">
+        <div style="padding: 0.9rem 1rem;">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div style="flex:1;">
+              <strong style="font-size:0.95rem;">{{ sc.title }}</strong>
+              <span class="status-pill pill-{{ sc.status }} ms-2">{{ sc.status }}</span>
+              <span style="font-size:0.72rem; color:var(--copi-muted); margin-left:0.5rem;">SC-{{ sc.id }}</span>
+            </div>
+            {% if request.state.user %}
+            <div class="d-flex gap-1">
+              <button class="btn btn-sm btn-outline-secondary"
+                      style="font-size:0.72rem; padding:0.15rem 0.5rem;"
+                      onclick="toggleScenarioEdit({{ sc.id }})">Edit</button>
+              <form method="post" action="/requirements/scenarios/{{ sc.id }}/delete"
+                    onsubmit="return confirm('Delete this scenario? Linked CQs will become unlinked.');" style="margin:0;">
+                <button type="submit" class="btn btn-sm btn-outline-danger"
+                        style="font-size:0.72rem; padding:0.15rem 0.5rem;">✕</button>
+              </form>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Display mode -->
+          <div id="sc-display-{{ sc.id }}" class="mt-2">
+            <div class="cq-text">{{ sc.narrative }}</div>
+            {% if sc.actors %}
+            <div class="mt-2">
+              <div class="section-label">Actors</div>
+              {% for actor in sc.actors %}
+              <span class="actor-pill">{{ actor }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Edit mode -->
+          <div id="sc-edit-{{ sc.id }}" style="display:none; margin-top:0.75rem;">
+            <div class="mb-2">
+              <label class="section-label">Title</label>
+              <input type="text" id="set-{{ sc.id }}" class="form-control form-control-sm"
+                     value="{{ sc.title }}">
+            </div>
+            <div class="mb-2">
+              <label class="section-label">Narrative</label>
+              <textarea id="sen-{{ sc.id }}" class="form-control form-control-sm" rows="3">{{ sc.narrative }}</textarea>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col-sm-6">
+                <label class="section-label">Actors (comma-separated)</label>
+                <input type="text" id="sea-{{ sc.id }}" class="form-control form-control-sm"
+                       value="{{ sc.actors | join(', ') }}">
+              </div>
+              <div class="col-sm-6">
+                <label class="section-label">Status</label>
+                <select id="ses-{{ sc.id }}" class="form-select form-select-sm">
+                  {% for s in ['draft','active','deprecated'] %}
+                  <option value="{{ s }}" {% if sc.status == s %}selected{% endif %}>{{ s }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-primary" onclick="saveScenario({{ sc.id }})">Save</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="toggleScenarioEdit({{ sc.id }})">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="text-center text-muted py-3"
+           style="border: 1px dashed var(--copi-border); border-radius:8px; margin-bottom:0.5rem;">
+        <div style="font-size:0.85rem;">No scenarios yet. Use "Add Scenario" to describe a stakeholder situation.</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Divider -->
+    <div style="border-top:1px solid var(--copi-border); margin: 1.25rem 0 1rem;"></div>
+
+    <!-- ── CQ section ── -->
+    <div class="section-head mb-3">
+      <div>
+        <h5>Competency Questions</h5>
+        <small class="text-muted">{{ cqs | length }} question{{ 's' if cqs | length != 1 }}</small>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        {% set open_count     = cqs | selectattr('status','equalto','open')     | list | length %}
+        {% set partial_count  = cqs | selectattr('status','equalto','partial')  | list | length %}
+        {% set answered_count = cqs | selectattr('status','equalto','answered') | list | length %}
+        {% if open_count %}
+        <span class="status-pill pill-open">{{ open_count }} open</span>
+        {% endif %}
+        {% if partial_count %}
+        <span class="status-pill pill-partial">{{ partial_count }} partial</span>
+        {% endif %}
+        {% if answered_count %}
+        <span class="status-pill pill-answered">{{ answered_count }} answered</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if cqs %}
+    {% for cq in cqs %}
+    <div class="cq-card cq-status-{{ cq.status }}" id="cq-{{ cq.id }}">
+      <div style="padding: 0.9rem 1rem;">
+        {% if request.state.user %}
+        <div class="d-flex justify-content-end gap-1">
+          <button class="btn btn-sm btn-outline-secondary"
+                  style="font-size:0.72rem; padding:0.15rem 0.5rem;"
+                  onclick="toggleEdit({{ cq.id }})">Edit</button>
+          <form method="post" action="/requirements/{{ cq.id }}/delete"
+                onsubmit="return confirm('Delete this question?');" style="margin:0;">
+            <button type="submit" class="btn btn-sm btn-outline-danger"
+                    style="font-size:0.72rem; padding:0.15rem 0.5rem;">✕</button>
+          </form>
+        </div>
+        {% endif %}
+
+        <!-- Display mode -->
+        <div id="cq-display-{{ cq.id }}" class="mt-2">
+          {% if cq.scenario_title %}
+          <div class="mb-1">
+            <small style="color:var(--copi-muted);">↳ <a href="#sc-{{ cq.scenario_id }}" class="sc-link">{{ cq.scenario_title }}</a></small>
+          </div>
+          {% endif %}
+          <div class="cq-text">{{ cq.text }}</div>
+          {% if cq.formal_expr %}
+          <div class="cq-formal">{{ cq.formal_expr }}</div>
+          {% endif %}
+          <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+            <span class="status-pill pill-{{ cq.status }}">{{ cq.status }}</span>
+            <span style="font-size:0.72rem; color:var(--copi-muted);">CQ-{{ cq.id }}</span>
+            {% if cq.linked_classes %}
+            <span style="font-size:0.72rem; color:var(--copi-muted);">·</span>
+            {% for cls, cls_id in cq.linked_classes %}
+            {% if cls_id %}
+            <a href="/enrich/{{ cls_id }}/doc" class="cq-class-pill">{{ cls }}</a>
+            {% else %}
+            <span class="cq-class-pill">{{ cls }}</span>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+          </div>
+          {% if cq.notes %}
+          <div class="mt-2" style="font-size:0.83rem; color:#475569; border-left:3px solid var(--copi-border); padding-left:0.6rem;">
+            {{ cq.notes }}
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Edit mode (hidden) -->
+        <div id="cq-edit-{{ cq.id }}" style="display:none; margin-top:0.75rem;">
+          <div class="mb-2">
+            <label class="section-label">Question text</label>
+            <textarea id="et-{{ cq.id }}" class="form-control form-control-sm" rows="2">{{ cq.text }}</textarea>
+          </div>
+          <div class="mb-2">
+            <label class="section-label">Formal expression (optional)</label>
+            <input type="text" id="ef-{{ cq.id }}" class="form-control form-control-sm"
+                   style="font-family:monospace; font-size:0.82rem;"
+                   value="{{ cq.formal_expr or '' }}"
+                   placeholder="e.g. ∃x (BallValve(x) → Valve(x))">
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-sm-6">
+              <label class="section-label">Status</label>
+              <select id="es-{{ cq.id }}" class="form-select form-select-sm">
+                {% for s in ['open','partial','answered'] %}
+                <option value="{{ s }}" {% if cq.status == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-sm-6">
+              <label class="section-label">Linked classes (comma-separated)</label>
+              <input type="text" id="ec-{{ cq.id }}" class="form-control form-control-sm"
+                     value="{{ cq.linked_class_names | join(', ') }}"
+                     placeholder="e.g. ball valve, control valve">
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="section-label">Notes</label>
+            <textarea id="en-{{ cq.id }}" class="form-control form-control-sm" rows="2">{{ cq.notes or '' }}</textarea>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-primary" onclick="saveCQ({{ cq.id }})">Save</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="toggleEdit({{ cq.id }})">Cancel</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <div class="text-center text-muted py-5" style="border: 1px dashed var(--copi-border); border-radius:8px;">
+      <div style="font-size:2rem; opacity:.3;">?</div>
+      <div>No competency questions yet.</div>
+      <div style="font-size:0.85rem;">Use the form on the right to add the first one.</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ══ Right column: sticky form sidebar ══ -->
+  {% if request.state.user %}
+  <div class="col-lg-4">
+    <div class="add-form-card" style="position:sticky; top:1rem;">
+
+      <!-- Toggle buttons -->
+      <div class="d-flex gap-2 mb-3">
+        <button id="btn-tab-orsd" class="btn btn-sm btn-outline-secondary"
+                style="flex:1;" onclick="showTab('orsd')">ORSD</button>
+        <button id="btn-tab-cq" class="btn btn-sm btn-primary"
+                style="flex:1;" onclick="showTab('cq')">Add CQ</button>
+        <button id="btn-tab-sc" class="btn btn-sm btn-outline-secondary"
+                style="flex:1;" onclick="showTab('sc')">Add Scenario</button>
+      </div>
+
+      <!-- ORSD edit form -->
+      <div id="tab-orsd" style="display:none;">
+        <h6 style="font-size:0.82rem; font-family:system-ui,sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--copi-muted); margin-bottom:1rem;">
+          Edit ORSD Header
+        </h6>
+        <div class="mb-2">
+          <label class="form-label" style="font-size:0.83rem;">Ontology name</label>
+          <input type="text" id="orsd-name" class="form-control form-control-sm"
+                 value="{{ orsd.ontology_name or '' }}">
+        </div>
+        <div class="mb-2">
+          <label class="form-label" style="font-size:0.83rem;">Purpose</label>
+          <textarea id="orsd-purpose" class="form-control form-control-sm" rows="3">{{ orsd.purpose or '' }}</textarea>
+        </div>
+        <div class="mb-2">
+          <label class="form-label" style="font-size:0.83rem;">Scope</label>
+          <textarea id="orsd-scope" class="form-control form-control-sm" rows="3">{{ orsd.scope or '' }}</textarea>
+        </div>
+        <div class="mb-2">
+          <label class="form-label" style="font-size:0.83rem;">Implementation language</label>
+          <input type="text" id="orsd-lang" class="form-control form-control-sm"
+                 value="{{ orsd.implementation_language or '' }}">
+        </div>
+        <div class="mb-2">
+          <label class="form-label" style="font-size:0.83rem;">Intended end-users <small class="text-muted">(comma-separated)</small></label>
+          <input type="text" id="orsd-users" class="form-control form-control-sm"
+                 value="{{ (orsd.intended_users or []) | join(', ') }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label" style="font-size:0.83rem;">Intended uses <small class="text-muted">(comma-separated)</small></label>
+          <input type="text" id="orsd-uses" class="form-control form-control-sm"
+                 value="{{ (orsd.intended_uses or []) | join(', ') }}">
+        </div>
+        <button class="btn btn-primary btn-sm w-100" onclick="saveORSD()">Save ORSD Header</button>
+      </div>
+
+      <!-- Add CQ form -->
+      <div id="tab-cq">
+        <h6 style="font-size:0.82rem; font-family:system-ui,sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--copi-muted); margin-bottom:1rem;">
+          Add Competency Question
+        </h6>
+        <form method="post" action="/requirements">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:0.83rem;">Question <span class="text-danger">*</span></label>
+            <textarea name="text" class="form-control" rows="3" required
+                      placeholder="Can the ontology distinguish a centrifugal pump from a reciprocating pump?"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:0.83rem;">Formal expression <span class="text-muted">(optional)</span></label>
+            <input type="text" name="formal_expr" class="form-control"
+                   style="font-family:monospace; font-size:0.82rem;"
+                   placeholder="∃x (CentrifugalPump(x) ∧ ¬ReciprocatingPump(x))">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:0.83rem;">Linked classes <span class="text-muted">(comma-separated)</span></label>
+            <input type="text" name="linked_classes" class="form-control" style="font-size:0.83rem;"
+                   placeholder="centrifugal pump, reciprocating pump"
+                   list="class-suggestions">
+            <datalist id="class-suggestions">
+              {% for cls in enriched_classes %}
+              <option value="{{ cls }}">
+              {% endfor %}
+            </datalist>
+          </div>
+          {% if scenarios %}
+          <div class="mb-3">
+            <label class="form-label" style="font-size:0.83rem;">Motivating scenario <span class="text-muted">(optional)</span></label>
+            <select name="scenario_id" class="form-select form-select-sm">
+              <option value="">— none —</option>
+              {% for sc in scenarios %}
+              <option value="{{ sc.id }}">{{ sc.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label" style="font-size:0.83rem;">Notes <span class="text-muted">(optional)</span></label>
+            <textarea name="notes" class="form-control" rows="2" style="font-size:0.83rem;"
+                      placeholder="Motivation, related ontology design pattern, etc."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">Add Question</button>
+        </form>
+      </div>
+
+      <!-- Add Scenario form -->
+      <div id="tab-sc" style="display:none;">
+        <h6 style="font-size:0.82rem; font-family:system-ui,sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--copi-muted); margin-bottom:1rem;">
+          Add Motivating Scenario
+        </h6>
+        <form method="post" action="/requirements/scenarios">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:0.83rem;">Title <span class="text-danger">*</span></label>
+            <input type="text" name="title" class="form-control" required
+                   placeholder="Identify pump subtype for maintenance">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:0.83rem;">Narrative <span class="text-danger">*</span></label>
+            <textarea name="narrative" class="form-control" rows="4" required
+                      placeholder="A process engineer needs to determine what subtype of pump is installed so that the correct maintenance procedure can be selected."></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:0.83rem;">Actors <span class="text-muted">(comma-separated)</span></label>
+            <input type="text" name="actors" class="form-control" style="font-size:0.83rem;"
+                   placeholder="Process engineer, Maintenance engineer">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:0.83rem;">Status</label>
+            <select name="status" class="form-select form-select-sm">
+              <option value="draft">draft</option>
+              <option value="active">active</option>
+              <option value="deprecated">deprecated</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">Add Scenario</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function showTab(which) {
+    ['cq', 'sc', 'orsd'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = (t === which) ? '' : 'none';
+      document.getElementById('btn-tab-' + t).className =
+        'btn btn-sm ' + (t === which ? 'btn-primary' : 'btn-outline-secondary');
+      document.getElementById('btn-tab-' + t).style.flex = '1';
+    });
+  }
+
+  function toggleEdit(id) {
+    const disp = document.getElementById('cq-display-' + id);
+    const edit = document.getElementById('cq-edit-'    + id);
+    const show = edit.style.display === 'none';
+    disp.style.display = show ? 'none' : '';
+    edit.style.display = show ? '' : 'none';
+  }
+
+  function toggleScenarioEdit(id) {
+    const disp = document.getElementById('sc-display-' + id);
+    const edit = document.getElementById('sc-edit-'    + id);
+    const show = edit.style.display === 'none';
+    disp.style.display = show ? 'none' : '';
+    edit.style.display = show ? '' : 'none';
+  }
+
+  function toggleNFREdit(id) {
+    const disp = document.getElementById('nfr-display-' + id);
+    const edit = document.getElementById('nfr-edit-'    + id);
+    const show = edit.style.display === 'none';
+    disp.style.display = show ? 'none' : '';
+    edit.style.display = show ? ''     : 'none';
+  }
+
+  async function saveCQ(id) {
+    const fd = new FormData();
+    fd.append('text',          document.getElementById('et-' + id).value);
+    fd.append('formal_expr',   document.getElementById('ef-' + id).value);
+    fd.append('status',        document.getElementById('es-' + id).value);
+    fd.append('linked_classes',document.getElementById('ec-' + id).value);
+    fd.append('notes',         document.getElementById('en-' + id).value);
+    const resp = await fetch('/requirements/' + id + '/update', { method: 'POST', body: fd });
+    if (resp.ok) window.location.reload();
+  }
+
+  async function saveScenario(id) {
+    const fd = new FormData();
+    fd.append('title',    document.getElementById('set-' + id).value);
+    fd.append('narrative',document.getElementById('sen-' + id).value);
+    fd.append('actors',   document.getElementById('sea-' + id).value);
+    fd.append('status',   document.getElementById('ses-' + id).value);
+    const resp = await fetch('/requirements/scenarios/' + id + '/update', { method: 'POST', body: fd });
+    if (resp.ok) window.location.reload();
+  }
+
+  async function saveNFR(id) {
+    const fd = new FormData();
+    fd.append('category', document.getElementById('nfr-cat-' + id).value);
+    fd.append('text',     document.getElementById('nfr-txt-' + id).value);
+    const resp = await fetch('/requirements/nfr/' + id + '/update', { method: 'POST', body: fd });
+    if (resp.ok) window.location.reload();
+  }
+
+  async function saveORSD() {
+    const fd = new FormData();
+    fd.append('ontology_name',         document.getElementById('orsd-name').value);
+    fd.append('purpose',               document.getElementById('orsd-purpose').value);
+    fd.append('scope',                 document.getElementById('orsd-scope').value);
+    fd.append('implementation_language', document.getElementById('orsd-lang').value);
+    fd.append('intended_users',        document.getElementById('orsd-users').value);
+    fd.append('intended_uses',         document.getElementById('orsd-uses').value);
+    const resp = await fetch('/requirements/orsd/update', { method: 'POST', body: fd });
+    if (resp.ok) window.location.reload();
+  }
+</script>
+{% endblock %}

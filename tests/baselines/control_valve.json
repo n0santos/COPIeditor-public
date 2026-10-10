@@ -1,0 +1,108 @@
+{
+  "cluster_label": "control valve",
+  "classification_basis": "functional",
+  "classification_basis_rationale": "Control valve is defined by its function to modulate flow in response to control signals, not by any specific physical mechanism. Multiple constructive types (ball, butterfly, gate, globe, etc.) can all realize the same control function.",
+  "step1_function": {
+    "function_name": "ProcessControlledFlowFunction",
+    "function_parent": "FlowControlFunction",
+    "function_parent_enriched": true,
+    "function_nl_definition": "A FlowControlFunction that is realized in a ProcessControlledFlowProcess and that consists in modulating fluid flow rate, pressure, level, or temperature in response to control signals from an external controller or control system.",
+    "process_name": "ProcessControlledFlowProcess",
+    "process_parent": "PlannedProcess",
+    "process_nl_definition": "A PlannedProcess in which fluid flow is modulated by a control valve in response to control signals, enabling automatic regulation of process variables such as flow rate, pressure, level, or temperature.",
+    "rationale": "The identity-giving function is the ability to respond to external control signals to modulate flow, distinguishing control valves from manual valves or self-actuated valves. This function is already defined in the ontology and is more specific than the generic FlowControlFunction."
+  },
+  "step2_genus": {
+    "genus_name": "Valve",
+    "genus_bfo_root": "Assembly",
+    "genus_enriched": true,
+    "rationale": "Control valve is consistently defined across all sources as a subtype of valve. Valve is already enriched in the ontology and is the most specific appropriate superclass."
+  },
+  "step3_differentia": {
+    "differentia_expression": "∃hasComponentPartAtAllTimes.Actuator ⊓ ∃bearerOf.ProcessControlledFlowFunction",
+    "differentia_nl": "Has an actuator component and bears a process-controlled flow function that responds to external control signals.",
+    "genus_already_provides": [
+      "∃bearerOf.FlowControlFunction",
+      "∃hasComponentPartAtAllTimes.ValveBody"
+    ],
+    "distinguishes_from": {
+      "ManualValve": "Control valve has actuator and responds to control signals; manual valve requires human operation",
+      "CheckValve": "Control valve modulates flow via control signals; check valve prevents backflow automatically",
+      "ReliefValve": "Control valve responds to external control signals; relief valve responds to pressure threshold",
+      "SelfOperatingValve": "Control valve responds to external control signals; self-operating valve responds to local process conditions"
+    },
+    "rationale": "The actuator component is essential for receiving and acting on control signals, and the ProcessControlledFlowFunction differentiates from other valve functions that don't involve external control."
+  },
+  "step4_parts": {
+    "parts": [
+      {
+        "name": "Actuator",
+        "source_label": "ACTUATOR",
+        "parent": "Assembly",
+        "relation": "hasComponentPartAtAllTimes",
+        "is_subtype_specific": false,
+        "rationale": "All sources explicitly mention actuator as essential component that responds to control signals and positions the valve element",
+        "part_name_unverified": false
+      }
+    ],
+    "rationale": "Actuator is the only universally necessary part mentioned across all sources. Valve body and closure elements are inherited from the Valve genus. Other components like positioners or controllers are optional or subtype-specific."
+  },
+  "step5_signature": {
+    "inputs": [
+      {
+        "type": "FluidPortion",
+        "count": 1,
+        "constraints": "any phase fluid stream to be controlled"
+      },
+      {
+        "type": "InformationBearingArtifact",
+        "count": 1,
+        "constraints": "control signal from controller or control system"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "FluidPortion",
+        "count": 1,
+        "constraints": "modulated fluid stream with regulated flow rate, pressure, or other controlled variable"
+      }
+    ],
+    "transformation": "fluid flow rate, pressure, level, or temperature modulated in response to control signals to maintain desired process conditions",
+    "transformation_kind": "flow_regulation",
+    "transformation_kind_status": "controlled",
+    "proposed_kind_rationale": null,
+    "new_participant_type_definitions": [],
+    "rationale": "Control valves receive both a fluid stream and control signals, outputting a modulated fluid stream. The transformation is flow regulation based on external control input, distinguishing from simple on-off isolation or pressure relief."
+  },
+  "axiom_mode": "equivalent",
+  "primitive_rationale": null,
+  "disjoint_with": [],
+  "disjointness_rationale": "No disjointness declared. Control valve is orthogonal to constructive valve types (ball, gate, butterfly control valves are all possible). Other functional valve types may have compatible signatures under OWA.",
+  "definitions": {
+    "nl_definition_en": "A Valve that has an actuator component and bears a process-controlled flow function that modulates fluid flow in response to control signals from an external controller.",
+    "nl_definition_pt": "Uma Válvula que possui um componente atuador e possui uma função de controle de fluxo controlado por processo que modula o fluxo de fluido em resposta a sinais de controle de um controlador externo.",
+    "semiformal_axiom": "Every control valve is a valve that has an actuator and bears a process-controlled flow function, and every valve that has an actuator and bears a process-controlled flow function is a control valve.",
+    "fol_axiom": "∀x(ControlValve(x) ↔ (Valve(x) ∧ ∃a(Actuator(a) ∧ hasComponentPartAtAllTimes(x,a)) ∧ ∃f(ProcessControlledFlowFunction(f) ∧ bearerOf(x,f))))"
+  },
+  "divergence_flags": [
+    {
+      "type": "T2_granularity",
+      "evidence": "ISA 5.1 provides detailed subtypes based on controlled variables (FCV, LCV, PCV, TCV, etc.) while other sources focus on general definition without variable-specific classification",
+      "sources_involved": [
+        "isa5_1",
+        "iso15926",
+        "cfihos",
+        "slb_glossary"
+      ]
+    }
+  ],
+  "cross_standard_notes": "Strong consensus across sources on core definition involving actuator and control signal response. ISA 5.1 provides more granular classification by controlled variable type. OnePetro specifically mentions pressure regulators as a special case.",
+  "confidence": {
+    "step1": "high",
+    "step2": "high",
+    "step3": "high",
+    "step4": "high",
+    "step5": "high",
+    "overall": "high"
+  }
+}

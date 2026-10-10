@@ -1,0 +1,11 @@
+# ODR-008 promotion guard: IsolationValve ⊄ ControlValve (must NOT hold)
+# Returns a row (violation) if IsolationValve IS inferred as a subclass of ControlValve.
+# If this fires, promotion of ControlValve to axiom_mode='equivalent' would make
+# IsolationValve ≡ ControlValve, which is wrong.
+PREFIX copi: <https://www.inf.ufrgs.br/ontologies/copi/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?violation WHERE {
+  copi:COPI_0000088 rdfs:subClassOf+ copi:COPI_0000087 .
+  BIND("ODR-008 PROMOTION BLOCKED: IsolationValve (COPI_0000088) is inferred as subClassOf ControlValve (COPI_0000087) — resolve before promoting ControlValve to equivalent mode" AS ?violation)
+}

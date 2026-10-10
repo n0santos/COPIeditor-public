@@ -1,0 +1,12 @@
+# Grandfathered equivalent-subsumption pairs — ODR-022 §17.
+#
+# Each line is "D -> C": class D would be inferred a subclass of C, because C is defined
+# with owl:equivalentClass over a genus and a function that D also has, yet D never
+# declares C anywhere in its genus chain. See assert_no_unintended_function_subsumption().
+#
+# EMPTY as of 2026-08-13 — all 9 occurrences were resolved, so the check now enforces zero.
+# Four defining classes moved equivalent -> necessary (flow meter, flare, drive shaft,
+# electrical connection); two absorbed classes were genuine subtypes and had their genus
+# declared (cooling tower -> Cooler, flange -> Coupling).
+#
+# Do not add lines. A new line means a new instance shipped.

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="58.208332mm"
+   height="58.208336mm"
+   viewBox="0 0 58.208332 58.208336"
+   version="1.1"
+   id="svg2031"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2028">
+    <marker
+       markerWidth="9.4488211"
+       markerHeight="4.7226381"
+       refX="4.7244105"
+       refY="2.3613191"
+       orient="auto"
+       id="marker2430">
+      <path
+         style="opacity:1;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:6.51969;stroke-opacity:1;paint-order:normal"
+         d="m 1.8897638e-6,2.4201488e-6 c 0,0 0,4.7226330798512 0,4.7226330798512 L 9.4488208,2.3613379 Z"
+         id="path2428" />
+    </marker>
+  </defs>
+  <g
+     id="layer1"
+     transform="translate(6.7644456,-1462.0344)">
+    <g
+       id="g35381"
+       transform="translate(-445.16028,1654.201)">
+      <path
+         id="path3567"
+         d="m 467.5,-178 h -7.49999 v 15 l 7.49999,7.5 c 0,0 7.50001,-7.5 7.50001,-7.5 v -15 z"
+         style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:6.51969;stroke-opacity:1;paint-order:normal" />
+      <path
+         style="display:inline;fill:none;stroke:#000000;stroke-width:0.25;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         d="m 477.5,-175.5 h 5"
+         id="path3569" />
+      <path
+         id="path3571"
+         d="m 452.5,-175.5 h 5"
+         style="display:inline;fill:none;stroke:#000000;stroke-width:0.25;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         id="path3575"
+         d="m 467.50001,-148 v -5"
+         style="display:inline;fill:none;stroke:#000000;stroke-width:0.25;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+      <path
+         style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.25;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:18.8976;stroke-opacity:1;marker-end:url(#marker2430);paint-order:normal"
+         d="m 467.49999,-175.5 v 8.83185"
+         id="path3577" />
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+{% block title %}Batch Enrichment Queue{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb" style="font-size:0.82rem;">
+      <li class="breadcrumb-item"><a href="/enrich/">Dashboard</a></li>
+      <li class="breadcrumb-item active">Batch Queue</li>
+    </ol>
+  </nav>
+
+  <div class="row g-3">
+    <!-- Add to queue -->
+    {% if request.state.user %}
+    <div class="col-md-4">
+      <div class="card mb-3">
+        <div class="card-header fw-semibold" style="font-size:0.85rem;">Add Clusters to Queue</div>
+        <div class="card-body">
+          <div class="mb-2">
+            <label class="form-label" style="font-size:0.82rem;">Cluster labels (one per line)</label>
+            <textarea id="addLabels" class="form-control form-control-sm" rows="6"
+                      placeholder="pump&#10;valve&#10;compressor"></textarea>
+          </div>
+          <button class="btn btn-sm btn-primary w-100" onclick="addToQueue()">Add to Queue</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header fw-semibold" style="font-size:0.85rem;">Add from Unenriched Clusters</div>
+        <div class="card-body" style="font-size:0.82rem;">
+          <select id="clusterSelect" class="form-select form-select-sm mb-2" size="6" multiple>
+            {% for c in clusters %}
+            {% if not c.has_enrichment and not c.is_oos %}
+            <option value="{{ c.label }}"
+              {% if c.is_running %}disabled style="color:#f59e0b;"{% elif c.is_pending %}style="color:#94a3b8;"{% endif %}>
+              {{ c.label }}{% if c.is_running %} ⏳{% elif c.is_pending %} (queued){% endif %}
+            </option>
+            {% endif %}
+            {% endfor %}
+          </select>
+          <div style="font-size:0.72rem; color:#64748b; margin-top:0.3rem;">
+            ⏳ processing &nbsp;·&nbsp; <span style="color:#94a3b8;">grey = queued</span>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary w-100" onclick="addSelected()">Add Selected</button>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Queue table -->
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-semibold" style="font-size:0.85rem;">
+            Queue
+            <span class="badge bg-secondary ms-1" style="font-size:0.7rem;">{{ jobs | selectattr('status', 'equalto', 'pending') | list | length }} pending</span>
+          </span>
+          {% if request.state.user %}
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-success" id="runAllBtn" onclick="runAll()">▶ Run All Pending</button>
+            <button class="btn btn-sm btn-outline-primary" id="batchSubmitBtn" onclick="submitBatch()"
+                    title="Submit all pending jobs as one Anthropic Message Batch — 50% cheaper, results in ~1 h">
+              ⚡ Submit as Batch (50% off)
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="clearDone()">Clear Done/Failed</button>
+          </div>
+          {% endif %}
+        </div>
+        <div class="card-body p-0">
+          {% if not jobs %}
+          <div class="text-center text-muted py-4" style="font-size:0.85rem;">Queue is empty.</div>
+          {% else %}
+          <table class="table table-sm mb-0" style="font-size:0.8rem;">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Cluster</th>
+                <th>Status</th>
+                <th>Added</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="queueTableBody">
+              {% for job in jobs %}
+              <tr id="job-row-{{ job.id }}" class="{% if job.status == 'done' %}table-success{% elif job.status == 'failed' %}table-danger{% elif job.status == 'running' %}table-warning{% endif %}">
+                <td class="text-muted">{{ job.id }}</td>
+                <td class="fw-semibold">{{ job.cluster_label }}</td>
+                <td>
+                  <span id="job-status-{{ job.id }}" class="badge
+                    {% if job.status == 'done' %}bg-success
+                    {% elif job.status == 'failed' %}bg-danger
+                    {% elif job.status == 'running' %}bg-warning text-dark
+                    {% elif job.status == 'pending' %}bg-secondary
+                    {% else %}bg-light text-dark{% endif %}">
+                    {{ job.status }}
+                  </span>
+                  {% if job.error_msg %}
+                  <small class="text-danger ms-1" title="{{ job.error_msg }}">⚠</small>
+                  {% endif %}
+                </td>
+                <td class="text-muted">{{ job.created_at[:16] if job.created_at else '—' }}</td>
+                <td>
+                  {% if job.status == 'pending' %}
+                  <button class="btn btn-xs btn-outline-primary" style="font-size:0.7rem; padding:1px 6px;"
+                          onclick="runJob({{ job.id }}, this)">Run</button>
+                  {% elif job.status == 'done' and job.enrichment_id %}
+                  <a href="/enrich/{{ job.enrichment_id }}" class="btn btn-xs btn-outline-success" style="font-size:0.7rem; padding:1px 6px;">View</a>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Submissions -->
+  {% if batch_submissions %}
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header fw-semibold" style="font-size:0.85rem;">
+          Anthropic Message Batches
+          <span class="text-muted fw-normal ms-2" style="font-size:0.75rem;">50% off — async, results ready in ~1 h</span>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-sm mb-0" style="font-size:0.8rem;">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">Batch ID</th>
+                <th>Model</th>
+                <th class="text-center">Jobs</th>
+                <th class="text-center">Status</th>
+                <th>Submitted</th>
+                <th>Ended</th>
+                <th class="text-center">Imported</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for b in batch_submissions %}
+              <tr id="batch-row-{{ b.anthropic_batch_id }}">
+                <td class="ps-3"><code style="font-size:0.7rem;">{{ b.anthropic_batch_id }}</code></td>
+                <td><code style="font-size:0.7rem;">{{ b.model or '—' }}</code></td>
+                <td class="text-center">{{ b.job_count }}</td>
+                <td class="text-center">
+                  <span id="batch-status-{{ b.anthropic_batch_id }}" class="badge
+                    {% if b.status == 'ended' %}bg-success
+                    {% elif b.status == 'in_progress' %}bg-warning text-dark
+                    {% elif b.status == 'canceling' or b.status == 'canceled' %}bg-secondary
+                    {% else %}bg-light text-dark{% endif %}">
+                    {{ b.status }}
+                  </span>
+                </td>
+                <td class="text-muted">{{ b.created_at[:16] if b.created_at else '—' }}</td>
+                <td class="text-muted">{{ b.ended_at[:16] if b.ended_at else '—' }}</td>
+                <td class="text-center">
+                  {% if b.results_imported %}
+                  <span class="text-success fw-semibold">✓ {{ b.succeeded }}</span>
+                  {% else %}—{% endif %}
+                </td>
+                <td class="text-end pe-3">
+                  {% if b.status != 'ended' %}
+                  <button class="btn btn-xs btn-outline-secondary me-1" style="font-size:0.7rem;padding:1px 6px;"
+                          onclick="pollBatch('{{ b.anthropic_batch_id }}', this)">Poll</button>
+                  {% endif %}
+                  {% if b.status == 'ended' and not b.results_imported %}
+                  <button class="btn btn-xs btn-outline-success" style="font-size:0.7rem;padding:1px 6px;"
+                          onclick="importBatch('{{ b.anthropic_batch_id }}', this)">Import results</button>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function addToQueue() {
+    const labels = document.getElementById('addLabels').value;
+    const fd = new FormData();
+    fd.append('cluster_labels', labels);
+    const resp = await fetch('/enrich/queue/add', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (resp.ok) {
+      alert(data.added + ' cluster(s) added to queue.');
+      location.reload();
+    } else {
+      alert('Error: ' + (data.detail || JSON.stringify(data)));
+    }
+  }
+
+  function addSelected() {
+    const sel = document.getElementById('clusterSelect');
+    const selected = Array.from(sel.selectedOptions).map(o => o.value);
+    if (!selected.length) return;
+    document.getElementById('addLabels').value = selected.join('\n');
+    addToQueue();
+  }
+
+  async function runJob(jobId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    const statusEl = document.getElementById('job-status-' + jobId);
+    const row = document.getElementById('job-row-' + jobId);
+    if (statusEl) { statusEl.className = 'badge bg-warning text-dark'; statusEl.textContent = 'running'; }
+    if (row) row.className = 'table-warning';
+
+    const resp = await fetch('/enrich/queue/' + jobId + '/run', { method: 'POST' });
+    const data = await resp.json();
+
+    if (resp.ok && data.status === 'done') {
+      if (statusEl) { statusEl.className = 'badge bg-success'; statusEl.textContent = 'done'; }
+      if (row) {
+        row.className = 'table-success';
+        const td = row.querySelector('td:last-child');
+        if (td && data.enrichment_id) {
+          td.innerHTML = '<a href="/enrich/' + data.enrichment_id + '" class="btn btn-xs btn-outline-success" style="font-size:0.7rem;padding:1px 6px;">View</a>';
+        }
+      }
+    } else {
+      if (statusEl) { statusEl.className = 'badge bg-danger'; statusEl.textContent = 'failed'; }
+      if (row) row.className = 'table-danger';
+      if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+      console.error('Job failed:', data);
+    }
+  }
+
+  let _runAllActive = false;
+
+  async function runAll() {
+    if (_runAllActive) return;
+    _runAllActive = true;
+    const btn = document.getElementById('runAllBtn');
+    btn.textContent = '⏸ Running…';
+    btn.disabled = true;
+
+    const pendingRows = Array.from(document.querySelectorAll('#queueTableBody tr')).filter(row => {
+      const badge = row.querySelector('[id^="job-status-"]');
+      return badge && badge.textContent.trim() === 'pending';
+    });
+
+    for (const row of pendingRows) {
+      const jobId = parseInt(row.id.replace('job-row-', ''));
+      await runJob(jobId, null);
+    }
+
+    btn.textContent = '▶ Run All Pending';
+    btn.disabled = false;
+    _runAllActive = false;
+  }
+
+  async function clearDone() {
+    const fd = new FormData();
+    const resp = await fetch('/enrich/queue/clear', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (resp.ok) { location.reload(); }
+  }
+
+  async function submitBatch() {
+    const btn = document.getElementById('batchSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Submitting…';
+    try {
+      const resp = await fetch('/enrich/queue/batch-submit', { method: 'POST' });
+      const data = await resp.json();
+      if (!resp.ok) {
+        alert('Error: ' + (data.detail || JSON.stringify(data)));
+        btn.disabled = false;
+        btn.textContent = '⚡ Submit as Batch (50% off)';
+        return;
+      }
+      const skipped = data.skipped && data.skipped.length ? ` (${data.skipped.length} skipped: no definitions)` : '';
+      alert(`Batch submitted! ID: ${data.batch_id}\n${data.submitted} jobs queued for async processing${skipped}.\n\nResults will be ready in ~1 h. Use "Poll" to check status, then "Import results" when done.`);
+      location.reload();
+    } catch(e) {
+      alert('Network error: ' + e);
+      btn.disabled = false;
+      btn.textContent = '⚡ Submit as Batch (50% off)';
+    }
+  }
+
+  async function pollBatch(batchId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+    try {
+      const resp = await fetch('/enrich/queue/batch/' + batchId + '/status');
+      const data = await resp.json();
+      if (!resp.ok) { alert('Poll error: ' + (data.detail || JSON.stringify(data))); return; }
+      const statusEl = document.getElementById('batch-status-' + batchId);
+      const ps = data.processing_status || 'unknown';
+      if (statusEl) {
+        statusEl.textContent = ps;
+        statusEl.className = 'badge ' + (ps === 'ended' ? 'bg-success' : ps === 'in_progress' ? 'bg-warning text-dark' : 'bg-secondary');
+      }
+      const counts = data.request_counts || {};
+      if (ps === 'ended') {
+        alert(`Batch ${batchId} finished!\nSucceeded: ${counts.succeeded || 0} | Errored: ${counts.errored || 0} | Expired: ${counts.expired || 0}\nClick "Import results" to save enrichments.`);
+        location.reload();
+      } else {
+        alert(`Status: ${ps}\nProcessing: ${counts.processing || 0} | Succeeded: ${counts.succeeded || 0} | Errored: ${counts.errored || 0}`);
+      }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Poll'; }
+    }
+  }
+
+  async function importBatch(batchId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Importing…'; }
+    try {
+      const resp = await fetch('/enrich/queue/batch/' + batchId + '/import', { method: 'POST' });
+      const data = await resp.json();
+      if (!resp.ok) { alert('Import error: ' + (data.detail || JSON.stringify(data))); return; }
+      alert(`Import complete!\nImported: ${data.imported} enrichments.\n${data.errors && data.errors.length ? 'Errors: ' + data.errors.join(', ') : 'No errors.'}`);
+      location.reload();
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Import results'; }
+    }
+  }
+</script>
+{% endblock %}

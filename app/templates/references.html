@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}Literature — COPI Editor{% endblock %}
+
+{% block head %}
+<style>
+  .paper-card {
+    background: white;
+    border: 1px solid var(--copi-border);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    transition: box-shadow .15s;
+  }
+  .paper-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+
+  .cat-about_copi      { border-left: 3px solid #7c3aed; }
+  .cat-methodology     { border-left: 3px solid #1d4ed8; }
+  .cat-source_standard { border-left: 3px solid #0891b2; }
+  .cat-related_work    { border-left: 3px solid #64748b; }
+
+  .badge-about_copi      { background: #f5f3ff; color: #5b21b6; }
+  .badge-methodology     { background: #dbeafe; color: #1e40af; }
+  .badge-source_standard { background: #e0f2fe; color: #075985; }
+  .badge-related_work    { background: #f1f5f9; color: #475569; }
+
+  .cat-badge {
+    display: inline-block;
+    font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 0.12rem 0.45rem; border-radius: 20px;
+    vertical-align: middle;
+  }
+  .section-header {
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--copi-muted);
+    margin: 1.25rem 0 0.6rem; padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--copi-border);
+  }
+  .section-header:first-child { margin-top: 0; }
+
+  .add-form-card {
+    background: white;
+    border: 1px solid var(--copi-border);
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+  .section-label {
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--copi-muted); margin-bottom: 0.25rem;
+  }
+  .doi-link {
+    font-family: monospace; font-size: 0.78rem;
+    color: #1d4ed8; text-decoration: none;
+  }
+  .doi-link:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- ══ Paper list ══ -->
+  <div class="col-lg-8">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h5 class="mb-0">Literature</h5>
+        <small class="text-muted">{{ total }} paper{{ 's' if total != 1 }}</small>
+      </div>
+    </div>
+
+    {% if sections %}
+    {% for section in sections %}
+    <div class="section-header">{{ section.label }}</div>
+
+    {% for paper in section.papers %}
+    <div class="paper-card cat-{{ paper.category }}" id="paper-{{ paper.id }}">
+      <div style="padding: 0.9rem 1rem;">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+
+          <!-- Display mode -->
+          <div id="paper-display-{{ paper.id }}" style="flex:1;">
+            <div>
+              <span style="font-weight:600; font-size:0.95rem; color:#0f172a;">{{ paper.title }}</span>
+            </div>
+            {% if paper.authors or paper.year %}
+            <div style="font-size:0.83rem; color:var(--copi-muted); margin-top:0.2rem;">
+              {% if paper.authors %}{{ paper.authors }}{% endif %}
+              {% if paper.authors and paper.year %} · {% endif %}
+              {% if paper.year %}{{ paper.year }}{% endif %}
+            </div>
+            {% endif %}
+            {% if paper.doi %}
+            <div class="mt-1">
+              <a href="https://doi.org/{{ paper.doi }}" target="_blank" class="doi-link">
+                doi:{{ paper.doi }}
+              </a>
+            </div>
+            {% elif paper.url %}
+            <div class="mt-1">
+              <a href="{{ paper.url }}" target="_blank" class="doi-link">{{ paper.url }}</a>
+            </div>
+            {% endif %}
+            {% if paper.notes %}
+            <div class="mt-2" style="font-size:0.83rem; color:#475569; font-style:italic; border-left:3px solid var(--copi-border); padding-left:0.6rem;">
+              {{ paper.notes }}
+            </div>
+            {% endif %}
+          </div>
+
+          {% if request.state.user %}
+          <!-- Edit mode (hidden) -->
+          <div id="paper-edit-{{ paper.id }}" style="display:none; flex:1;">
+            <div class="mb-2">
+              <label class="section-label">Title</label>
+              <input type="text" id="pt-{{ paper.id }}" class="form-control form-control-sm"
+                     value="{{ paper.title }}">
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col-sm-8">
+                <label class="section-label">Authors</label>
+                <input type="text" id="pa-{{ paper.id }}" class="form-control form-control-sm"
+                       value="{{ paper.authors or '' }}">
+              </div>
+              <div class="col-sm-4">
+                <label class="section-label">Year</label>
+                <input type="number" id="py-{{ paper.id }}" class="form-control form-control-sm"
+                       value="{{ paper.year or '' }}" min="1900" max="2099">
+              </div>
+            </div>
+            <div class="mb-2">
+              <label class="section-label">Category</label>
+              <select id="pcat-{{ paper.id }}" class="form-select form-select-sm">
+                {% for key, label in categories %}
+                <option value="{{ key }}" {% if paper.category == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="section-label">DOI</label>
+              <input type="text" id="pd-{{ paper.id }}" class="form-control form-control-sm"
+                     style="font-family:monospace; font-size:0.82rem;"
+                     value="{{ paper.doi or '' }}" placeholder="10.xxxx/xxxx">
+            </div>
+            <div class="mb-2">
+              <label class="section-label">URL (if no DOI)</label>
+              <input type="text" id="pu-{{ paper.id }}" class="form-control form-control-sm"
+                     value="{{ paper.url or '' }}">
+            </div>
+            <div class="mb-2">
+              <label class="section-label">Notes</label>
+              <textarea id="pn-{{ paper.id }}" class="form-control form-control-sm" rows="2">{{ paper.notes or '' }}</textarea>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-primary" onclick="savePaper({{ paper.id }})">Save</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="togglePaperEdit({{ paper.id }})">Cancel</button>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if request.state.user %}
+          <!-- Action buttons -->
+          <div class="d-flex flex-column gap-1" id="paper-actions-{{ paper.id }}">
+            <button class="btn btn-sm btn-outline-secondary"
+                    style="font-size:0.72rem; padding:0.15rem 0.5rem;"
+                    onclick="togglePaperEdit({{ paper.id }})">Edit</button>
+            <form method="post" action="/references/{{ paper.id }}/delete"
+                  onsubmit="return confirm('Delete this paper?');" style="margin:0;">
+              <button type="submit" class="btn btn-sm btn-outline-danger"
+                      style="font-size:0.72rem; padding:0.15rem 0.5rem;">✕</button>
+            </form>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+
+    {% else %}
+    <div class="text-center text-muted py-5" style="border: 1px dashed var(--copi-border); border-radius:8px;">
+      <div style="font-size:2rem; opacity:.3;">—</div>
+      <div>No papers yet.</div>
+      <div style="font-size:0.85rem;">Use the form on the right to add the first reference.</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ══ Add form ══ -->
+  {% if request.state.user %}
+  <div class="col-lg-4">
+    <div class="add-form-card" style="position:sticky; top:1rem;">
+      <h6 style="font-size:0.82rem; font-family:system-ui,sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--copi-muted); margin-bottom:1rem;">
+        Add Paper
+      </h6>
+      <form method="post" action="/references">
+        <div class="mb-3">
+          <label class="form-label" style="font-size:0.83rem;">Category <span class="text-danger">*</span></label>
+          <select name="category" class="form-select form-select-sm">
+            {% for key, label in categories %}
+            <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" style="font-size:0.83rem;">Title <span class="text-danger">*</span></label>
+          <input type="text" name="title" class="form-control" required
+                 placeholder="Linked Open Terms: A Practical Methodology…">
+        </div>
+        <div class="mb-3">
+          <label class="form-label" style="font-size:0.83rem;">Authors <span class="text-muted">(optional)</span></label>
+          <input type="text" name="authors" class="form-control" style="font-size:0.83rem;"
+                 placeholder="Poveda-Villalón, M. et al.">
+        </div>
+        <div class="mb-3">
+          <label class="form-label" style="font-size:0.83rem;">Year <span class="text-muted">(optional)</span></label>
+          <input type="number" name="year" class="form-control" style="font-size:0.83rem;"
+                 min="1900" max="2099" placeholder="2022">
+        </div>
+        <div class="mb-3">
+          <label class="form-label" style="font-size:0.83rem;">DOI <span class="text-muted">(optional)</span></label>
+          <input type="text" name="doi" class="form-control"
+                 style="font-family:monospace; font-size:0.82rem;"
+                 placeholder="10.xxxx/xxxx">
+        </div>
+        <div class="mb-3">
+          <label class="form-label" style="font-size:0.83rem;">URL <span class="text-muted">(if no DOI)</span></label>
+          <input type="text" name="url" class="form-control" style="font-size:0.83rem;"
+                 placeholder="https://…">
+        </div>
+        <div class="mb-3">
+          <label class="form-label" style="font-size:0.83rem;">Notes <span class="text-muted">(optional)</span></label>
+          <textarea name="notes" class="form-control" rows="2" style="font-size:0.83rem;"
+                    placeholder="Relevance to COPI, methodology used, etc."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm w-100">Add Paper</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function togglePaperEdit(id) {
+    const disp    = document.getElementById('paper-display-' + id);
+    const edit    = document.getElementById('paper-edit-'    + id);
+    const actions = document.getElementById('paper-actions-' + id);
+    const show = edit.style.display === 'none';
+    disp.style.display    = show ? 'none' : '';
+    edit.style.display    = show ? '' : 'none';
+    actions.style.display = show ? 'none' : '';
+  }
+
+  async function savePaper(id) {
+    const fd = new FormData();
+    fd.append('title',    document.getElementById('pt-'   + id).value);
+    fd.append('authors',  document.getElementById('pa-'   + id).value);
+    fd.append('year',     document.getElementById('py-'   + id).value);
+    fd.append('category', document.getElementById('pcat-' + id).value);
+    fd.append('doi',      document.getElementById('pd-'   + id).value);
+    fd.append('url',      document.getElementById('pu-'   + id).value);
+    fd.append('notes',    document.getElementById('pn-'   + id).value);
+    const resp = await fetch('/references/' + id + '/update', { method: 'POST', body: fd });
+    if (resp.ok) window.location.reload();
+  }
+</script>
+{% endblock %}

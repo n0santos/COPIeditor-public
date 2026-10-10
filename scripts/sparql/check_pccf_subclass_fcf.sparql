@@ -1,0 +1,12 @@
+# Entailment check: ProcessControlledFlowFunction ⊑ FlowControlFunction (must hold)
+# Returns a row (violation) if the entailment is ABSENT from the reasoned graph.
+# Grounded in ODR-008 §4: function_parent = FlowControlFunction.
+PREFIX copi: <https://www.inf.ufrgs.br/ontologies/copi/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?violation WHERE {
+  FILTER NOT EXISTS {
+    copi:COPI_0000027 rdfs:subClassOf+ copi:COPI_0000026 .
+  }
+  BIND("ProcessControlledFlowFunction (COPI_0000027) is not a subClassOf FlowControlFunction (COPI_0000026) — ODR-008 §4: function_parent chain must be serialized" AS ?violation)
+}
