@@ -1,5 +1,7 @@
 # COPI Editor
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23290530.svg)](https://doi.org/10.5281/zenodo.23290530)
+
 A web-based research tool for building the **Core Ontology for Petroleum Installations (COPI)** — a BFO 2020 / IOF-Core aligned OWL 2 DL ontology of oil & gas production equipment.
 
 The editor automates the tedious parts of ontology engineering (aggregating definitions from standards, drafting axioms, generating OWL, running QC) while keeping the ontologist in full control of every modelling decision.

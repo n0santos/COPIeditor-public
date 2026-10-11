@@ -16,6 +16,7 @@ authors:
     affiliation: "Institute of Informatics, Federal University of Rio Grande do Sul (UFRGS)"
 version: 1.0.0
 date-released: 2026-10-10
+doi: 10.5281/zenodo.23290530
 license: MIT
 repository-code: "https://github.com/n0santos/COPIeditor-public"
 keywords:
