@@ -1,0 +1,41 @@
+{
+  "title": "COPI Editor",
+  "upload_type": "software",
+  "description": "A web-based research tool for building the Core Ontology for Petroleum Installations (COPI), a BFO 2020 / IOF-Core aligned OWL 2 DL ontology of oil & gas production equipment. It aggregates terms and definitions from industrial standards (ISO 15926-4, POSC Caesar RDL, CFIHOS, DEXPI, ISO 14224, ISA-5.1, among others) and supports a 5-step axiomatization workflow with expert review, OWL generation and quality checks.",
+  "creators": [
+    {
+      "name": "Santos, Nicolau O.",
+      "affiliation": "Institute of Informatics, Federal University of Rio Grande do Sul (UFRGS)",
+      "orcid": "0000-0003-0901-2465"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "Abel, Mara",
+      "affiliation": "Institute of Informatics, Federal University of Rio Grande do Sul (UFRGS)",
+      "orcid": "0000-0002-9589-2616",
+      "type": "Supervisor"
+    },
+    {
+      "name": "Pianezzola, Vicente",
+      "type": "Other"
+    }
+  ],
+  "license": "MIT",
+  "keywords": [
+    "ontology engineering",
+    "OWL",
+    "BFO",
+    "IOF-Core",
+    "oil and gas",
+    "industrial standards",
+    "axiomatization"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/INF-UFRGS-Ontologies/COPI",
+      "relation": "isSupplementTo",
+      "resource_type": "dataset"
+    }
+  ]
+}

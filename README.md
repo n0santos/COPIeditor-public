@@ -441,3 +441,7 @@ This tool supports a PhD thesis on building a core OWL ontology of oil & gas pro
 - **Ontology IRI:** `https://www.inf.ufrgs.br/ontologies/copi`
 - **ODK repository:** [INF-UFRGS-Ontologies/COPI](https://github.com/INF-UFRGS-Ontologies/COPI)
 - **Documentation:** `https://www.inf.ufrgs.br/ontologies/copi/docs`
+
+## Acknowledgments
+
+Thanks to Mara Abel (INF/UFRGS) for supervising the research this tool supports, and to Vicente Pianezzola for his work on deployment.
